@@ -211,13 +211,39 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
       const oldQuat = camera.quaternion.clone();
 
       switch (faceIndex) {
-        case 0: camera.position.set(3, 0, 0); break;
-        case 1: camera.position.set(-3, 0, 0); break;
-        case 2: camera.position.set(0, 3, 0); break;
-        case 3: camera.position.set(0, -3, 0); break;
-        case 4: camera.position.set(0, 0, 3); break;
-        case 5: camera.position.set(0, 0, -3); break;
+        case 0:
+          camera.position.set(3, 0, 0);
+          camera.up.set(0, 1, 0); // added for TrackballControls to ensure camera vectors aligned properly to orthogonal axes
+          break;
+
+        case 1:
+          camera.position.set(-3, 0, 0);
+          camera.up.set(0, 1, 0); // added for TrackballControls to ensure camera vectors aligned properly to orthogonal axes
+          break;
+        
+        case 2:
+          camera.position.set(0, 3, 0);
+          camera.up.set(0, 0, -1); // added for TrackballControls to ensure camera vectors aligned properly to orthogonal axes
+          break;
+        
+        case 3:
+          camera.position.set(0, -3, 0);
+          camera.up.set(0, 0, 1); // added for TrackballControls to ensure camera vectors aligned properly to orthogonal axes
+          break;
+        
+        case 4:
+          camera.position.set(0, 0, 3);
+          camera.up.set(0, 1, 0); // added for TrackballControls to ensure camera vectors aligned properly to orthogonal axes
+          break;
+        
+        case 5:
+          camera.position.set(0, 0, -3);
+          camera.up.set(0, 1, 0); // added for TrackballControls to ensure camera vectors aligned properly to orthogonal axes
+          break;
       }
+      controls.target.set(0, 0, 0); // added for TrackballControls
+      camera.lookAt(controls.target); // added for TrackballControls
+      camera.updateMatrixWorld(); // added for TrackballControls
       controls.update();
 
       const newQuat = camera.quaternion.clone();
