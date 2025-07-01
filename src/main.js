@@ -40,14 +40,22 @@ let viewCube = null;
 
 const loader = new GLTFLoader();
 loader.load('/beveled_cube_chamfered.glb', (gltf) => {
-  // Corner cube
+  // ✅ Corner cube
   viewCube = gltf.scene.clone();
   viewCube.scale.set(0.5, 0.5, 0.5);
+
   viewCube.traverse((child) => {
-    if (child.isMesh && !child.material) {
-      child.material = new THREE.MeshNormalMaterial();
+    if (child.isMesh) {
+      // ✅ DEBUG: check the draw call groups
+      console.log('Groups:', child.geometry.groups);
+
+      // ✅ fallback: add material if missing
+      if (!child.material) {
+        child.material = new THREE.MeshNormalMaterial();
+      }
     }
   });
+
   cubeScene.add(viewCube);
 
   // Main model
