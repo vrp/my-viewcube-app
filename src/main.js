@@ -39,7 +39,7 @@ cubeCamera.position.z = 5;
 let viewCube = null;
 
 const loader = new GLTFLoader();
-loader.load('/beveled_cube_chamfered_v2.glb', (gltf) => {
+loader.load('/beveled_cube_chamfered.glb', (gltf) => {
   viewCube = gltf.scene;
   cubeScene.add(viewCube);
 });
