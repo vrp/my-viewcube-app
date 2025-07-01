@@ -20,6 +20,20 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
+let zoomStart = null;
+
+controls.addEventListener('start', () => {
+  zoomStart = camera.position.distanceTo(controls.target);
+});
+
+controls.addEventListener('end', () => {
+  const zoomEnd = camera.position.distanceTo(controls.target);
+  if (zoomStart !== null && Math.abs(zoomEnd - zoomStart) > 0.001) {
+    logEvent(`Zoom changed | From: ${zoomStart.toFixed(2)} | To: ${zoomEnd.toFixed(2)}`);
+  }
+  zoomStart = null;
+});
+
 const box = new THREE.Mesh(
   new THREE.BoxGeometry(),
   new THREE.MeshNormalMaterial()
