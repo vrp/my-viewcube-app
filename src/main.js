@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; // limits look up and look down rotate envelope to 180 degrees
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js'; // enables full free rotation without limits
 
 // SCENE
 const scene = new THREE.Scene();
@@ -17,14 +18,23 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; // set this to false if you don't want "inertia" effect when rotating and panning a model
-controls.dampingFactor = 0.25; // Default is 0.05 (works when enableDamping is true)
+// un-comment the following section if using OrbitControls (and not TrackballControls)
+// const controls = new OrbitControls(camera, renderer.domElement);
+// controls.enableDamping = true; // set this to false if you don't want "inertia" effect when rotating and panning a model
+// controls.dampingFactor = 0.25; // Default is 0.05 (works when enableDamping is true)
 
-controls.minPolarAngle = 0;          // allow looking straight up
-controls.maxPolarAngle = Math.PI;    // allow looking straight down
-controls.minAzimuthAngle = -Infinity; // no horizontal limit
-controls.maxAzimuthAngle = Infinity;  // no horizontal limit
+// un-comment the following section if using TrackballControls
+const controls = new TrackballControls(camera, renderer.domElement);
+controls.rotateSpeed = 5.0;
+controls.zoomSpeed = 1.2;
+controls.panSpeed = 0.8;
+controls.dynamicDampingFactor = 0.3;
+
+// Following section only applies for OrbitControls
+// controls.minPolarAngle = 0;          // allow looking straight up
+// controls.maxPolarAngle = Math.PI;    // allow looking straight down
+// controls.minAzimuthAngle = -Infinity; // no horizontal limit
+// controls.maxAzimuthAngle = Infinity;  // no horizontal limit
 
 let lastZoomDistance = camera.position.distanceTo(controls.target);
 let zoomStartDistance = lastZoomDistance;
