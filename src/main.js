@@ -71,10 +71,16 @@ controls.addEventListener('change', () => {
   }
 });
 
-const box = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshNormalMaterial()
-);
+const boxGeometry = new THREE.BoxGeometry();
+const boxMaterials = [
+  new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+  new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
+  new THREE.MeshBasicMaterial({ color: 0x0000ff }),
+  new THREE.MeshBasicMaterial({ color: 0xffff00 }),
+  new THREE.MeshBasicMaterial({ color: 0x00ffff }),
+  new THREE.MeshBasicMaterial({ color: 0xff00ff }),
+];
+const box = new THREE.Mesh(boxGeometry, boxMaterials);
 scene.add(box);
 
 const light = new THREE.DirectionalLight(0xffffff, 1);
