@@ -24,24 +24,50 @@ let lastZoomDistance = camera.position.distanceTo(controls.target);
 let zoomStartDistance = lastZoomDistance;
 let zoomTimeout;
 
+let lastPanTarget = controls.target.clone();
+let panStart = lastPanTarget.clone();
+let panTimeout;
+
 renderer.domElement.addEventListener('wheel', () => {
-  // When wheel moves, note start if not already in progress
-  if (!zoomTimeout) {
-    zoomStartDistance = lastZoomDistance;
+  if (!zoomTimeout) zoomStartDistance = lastZoomDistance;
+  clearTimeout(zoomTimeout);
+  zoomTimeout = setTimeout(() => {
+    const newZoom = camera.position.distanceTo(controls.target);
+    if (Math.abs(newZoom - zoomStartDistance) > 0.001) {
+      logEvent(`Zoom changed | From: ${zoomStartDistance.toFixed(2)} | To: ${newZoom.toFixed(2)}`);
+    }
+    lastZoomDistance = newZoom;
+    zoomTimeout = null;
+  }, 200);
+});
+
+// Touch pinch triggers 'change', so handle there
+controls.addEventListener('change', () => {
+  // ZOOM (touch pinch or programmatic)
+  const newZoom = camera.position.distanceTo(controls.target);
+  if (Math.abs(newZoom - lastZoomDistance) > 0.001) {
+    if (!zoomTimeout) zoomStartDistance = lastZoomDistance;
+    clearTimeout(zoomTimeout);
+    zoomTimeout = setTimeout(() => {
+      const finalZoom = camera.position.distanceTo(controls.target);
+      if (Math.abs(finalZoom - zoomStartDistance) > 0.001) {
+        logEvent(`Zoom changed | From: ${zoomStartDistance.toFixed(2)} | To: ${finalZoom.toFixed(2)}`);
+      }
+      lastZoomDistance = finalZoom;
+      zoomTimeout = null;
+    }, 200);
   }
 
-  // Clear any pending end detection
-  clearTimeout(zoomTimeout);
-
-  // Wait 200ms after last wheel event to decide it's "done"
-  zoomTimeout = setTimeout(() => {
-    let newZoomDistance = camera.position.distanceTo(controls.target);
-    if (Math.abs(newZoomDistance - zoomStartDistance) > 0.001) {
-      logEvent(`Zoom changed | From: ${zoomStartDistance.toFixed(2)} | To: ${newZoomDistance.toFixed(2)}`);
-    }
-    zoomTimeout = null;
-    lastZoomDistance = newZoomDistance;
-  }, 200);
+  // PAN
+  if (!controls.target.equals(lastPanTarget)) {
+    if (!panTimeout) panStart.copy(lastPanTarget);
+    clearTimeout(panTimeout);
+    panTimeout = setTimeout(() => {
+      logEvent(`Pan changed | From: (${panStart.x.toFixed(2)}, ${panStart.y.toFixed(2)}, ${panStart.z.toFixed(2)}) | To: (${controls.target.x.toFixed(2)}, ${controls.target.y.toFixed(2)}, ${controls.target.z.toFixed(2)})`);
+      lastPanTarget.copy(controls.target);
+      panTimeout = null;
+    }, 200);
+  }
 });
 
 const box = new THREE.Mesh(
