@@ -20,18 +20,28 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-let zoomStart = null;
+let lastZoomDistance = camera.position.distanceTo(controls.target);
+let zoomStartDistance = lastZoomDistance;
+let zoomTimeout;
 
-controls.addEventListener('start', () => {
-  zoomStart = camera.position.distanceTo(controls.target);
-});
-
-controls.addEventListener('end', () => {
-  const zoomEnd = camera.position.distanceTo(controls.target);
-  if (zoomStart !== null && Math.abs(zoomEnd - zoomStart) > 0.001) {
-    logEvent(`Zoom changed | From: ${zoomStart.toFixed(2)} | To: ${zoomEnd.toFixed(2)}`);
+renderer.domElement.addEventListener('wheel', () => {
+  // When wheel moves, note start if not already in progress
+  if (!zoomTimeout) {
+    zoomStartDistance = lastZoomDistance;
   }
-  zoomStart = null;
+
+  // Clear any pending end detection
+  clearTimeout(zoomTimeout);
+
+  // Wait 200ms after last wheel event to decide it's "done"
+  zoomTimeout = setTimeout(() => {
+    let newZoomDistance = camera.position.distanceTo(controls.target);
+    if (Math.abs(newZoomDistance - zoomStartDistance) > 0.001) {
+      logEvent(`Zoom changed | From: ${zoomStartDistance.toFixed(2)} | To: ${newZoomDistance.toFixed(2)}`);
+    }
+    zoomTimeout = null;
+    lastZoomDistance = newZoomDistance;
+  }, 200);
 });
 
 const box = new THREE.Mesh(
