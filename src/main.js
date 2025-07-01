@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+// ========== SCENE SETUP ==========
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xdddddd);
 
@@ -30,7 +31,7 @@ light.position.set(5, 5, 5);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-// View cube scene
+// ========== VIEW CUBE ==========
 const cubeScene = new THREE.Scene();
 const cubeCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
 cubeCamera.position.z = 5;
@@ -48,15 +49,70 @@ const viewCube = new THREE.Mesh(
 );
 cubeScene.add(viewCube);
 
+// ========== TIMER ==========
+const timerDiv = document.createElement('div');
+timerDiv.style.position = 'absolute';
+timerDiv.style.top = '10px';
+timerDiv.style.left = '10px';
+timerDiv.style.color = '#000';
+timerDiv.style.fontFamily = 'monospace';
+timerDiv.style.fontSize = '16px';
+document.body.appendChild(timerDiv);
+
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  timerDiv.textContent = `${hh}:${mm}:${ss}:${ms}`;
+  requestAnimationFrame(updateClock);
+}
+updateClock();
+
+// ========== RESIZE ==========
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// ========== RAYCASTING ==========
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+let hoveredFaceIndex = null;
+let lastQuaternion = camera.quaternion.clone();
+let orientationSource = '';
 
+// ========== HOVER ==========
+renderer.domElement.addEventListener('pointermove', (event) => {
+  const size = 100;
+  const margin = 10;
+
+  const inCube =
+    event.clientX > window.innerWidth - size - margin &&
+    event.clientY < size + margin;
+
+  if (inCube) {
+    mouse.x =
+      ((event.clientX - (window.innerWidth - size - margin)) / size) * 2 - 1;
+    mouse.y = -((event.clientY - margin) / size) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, cubeCamera);
+    const intersects = raycaster.intersectObject(viewCube, true);
+    if (intersects.length > 0) {
+      const faceIndex = intersects[0].face.materialIndex;
+      if (faceIndex !== hoveredFaceIndex) {
+        hoveredFaceIndex = faceIndex;
+        logEvent(`Hovered face: ${faceIndex}`);
+      }
+    } else {
+      hoveredFaceIndex = null;
+    }
+  }
+});
+
+// ========== CLICK ==========
 renderer.domElement.addEventListener('pointerdown', (event) => {
   const size = 100;
   const margin = 10;
@@ -74,35 +130,52 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
     const intersects = raycaster.intersectObject(viewCube, true);
     if (intersects.length > 0) {
       const faceIndex = intersects[0].face.materialIndex;
+      logEvent(`Clicked face: ${faceIndex}`);
+
       switch (faceIndex) {
-        case 0:
-          camera.position.set(3, 0, 0);
-          break;
-        case 1:
-          camera.position.set(-3, 0, 0);
-          break;
-        case 2:
-          camera.position.set(0, 3, 0);
-          break;
-        case 3:
-          camera.position.set(0, -3, 0);
-          break;
-        case 4:
-          camera.position.set(0, 0, 3);
-          break;
-        case 5:
-          camera.position.set(0, 0, -3);
-          break;
+        case 0: camera.position.set(3, 0, 0); break;
+        case 1: camera.position.set(-3, 0, 0); break;
+        case 2: camera.position.set(0, 3, 0); break;
+        case 3: camera.position.set(0, -3, 0); break;
+        case 4: camera.position.set(0, 0, 3); break;
+        case 5: camera.position.set(0, 0, -3); break;
       }
       controls.update();
+      orientationSource = 'view cube';
     }
+  } else {
+    orientationSource = 'mouse drag';
   }
 });
 
+// ========== LOG FUNCTION ==========
+function logEvent(message) {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  console.log(`[${hh}:${mm}:${ss}:${ms}] ${message}`);
+}
+
+// ========== ANIMATE ==========
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
   viewCube.quaternion.copy(camera.quaternion).invert();
+
+  // Check orientation change
+  if (!camera.quaternion.equals(lastQuaternion)) {
+    logEvent(
+      `Orientation changed | From: ${quaternionToString(
+        lastQuaternion
+      )} | To: ${quaternionToString(camera.quaternion)} | Source: ${
+        orientationSource || 'unknown'
+      }`
+    );
+    lastQuaternion.copy(camera.quaternion);
+    orientationSource = ''; // reset
+  }
 
   renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
   renderer.setScissorTest(false);
@@ -126,6 +199,10 @@ function animate() {
   );
   renderer.render(cubeScene, cubeCamera);
   renderer.setScissorTest(false);
+}
+
+function quaternionToString(q) {
+  return `(${q.x.toFixed(2)}, ${q.y.toFixed(2)}, ${q.z.toFixed(2)}, ${q.w.toFixed(2)})`;
 }
 
 animate();
