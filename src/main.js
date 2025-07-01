@@ -21,6 +21,11 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; // set this to false if you don't want "inertia" effect when rotating and panning a model
 controls.dampingFactor = 0.25; // Default is 0.05 (works when enableDamping is true)
 
+controls.minPolarAngle = 0;          // allow looking straight up
+controls.maxPolarAngle = Math.PI;    // allow looking straight down
+controls.minAzimuthAngle = -Infinity; // no horizontal limit
+controls.maxAzimuthAngle = Infinity;  // no horizontal limit
+
 let lastZoomDistance = camera.position.distanceTo(controls.target);
 let zoomStartDistance = lastZoomDistance;
 let zoomTimeout;
