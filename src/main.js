@@ -40,8 +40,28 @@ let viewCube = null;
 
 const loader = new GLTFLoader();
 loader.load('/beveled_cube_chamfered.glb', (gltf) => {
-  viewCube = gltf.scene;
+  // Corner cube
+  viewCube = gltf.scene.clone();
+  viewCube.scale.set(0.5, 0.5, 0.5);
+  viewCube.traverse((child) => {
+    if (child.isMesh && !child.material) {
+      child.material = new THREE.MeshNormalMaterial();
+    }
+  });
   cubeScene.add(viewCube);
+
+  // Main model
+  const mainModel = gltf.scene.clone();
+  mainModel.scale.set(1, 1, 1);
+  mainModel.traverse((child) => {
+    if (child.isMesh && !child.material) {
+      child.material = new THREE.MeshNormalMaterial();
+    }
+  });
+  scene.add(mainModel);
+
+  const cubeLight = new THREE.AmbientLight(0xffffff, 1);
+  cubeScene.add(cubeLight);
 });
 
 // === RAYCAST ===
