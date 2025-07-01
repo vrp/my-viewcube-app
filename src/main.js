@@ -18,7 +18,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+controls.enableDamping = true; // set this to false if you don't want "inertia" effect when rotating and panning a model
+controls.dampingFactor = 0.25; // Default is 0.05 (works when enableDamping is true)
 
 let lastZoomDistance = camera.position.distanceTo(controls.target);
 let zoomStartDistance = lastZoomDistance;
