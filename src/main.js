@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-// ========== SCENE ==========
+// SCENE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xdddddd);
 
@@ -31,7 +31,7 @@ light.position.set(5, 5, 5);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-// ========== VIEW CUBE ==========
+// VIEW CUBE
 const cubeScene = new THREE.Scene();
 const cubeCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
 cubeCamera.position.z = 5;
@@ -49,7 +49,7 @@ const viewCube = new THREE.Mesh(
 );
 cubeScene.add(viewCube);
 
-// ========== TIMER ==========
+// TIMER
 const timerDiv = document.createElement('div');
 timerDiv.style.position = 'absolute';
 timerDiv.style.top = '10px';
@@ -70,25 +70,25 @@ function updateClock() {
 }
 updateClock();
 
-// ========== RESIZE ==========
+// RESIZE
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ========== RAYCAST ==========
+// RAYCAST
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let hoveredFaceIndex = null;
 
-// ========== ORIENTATION TRACKING ==========
+// ORIENTATION TRACKING
 let orientationStart = null;
 let orientationEnd = null;
 let orientationCause = null;
 let orientationActive = false;
 
-// ========== HOVER ==========
+// HOVER
 renderer.domElement.addEventListener('pointermove', (event) => {
   const size = 100;
   const margin = 10;
@@ -116,7 +116,7 @@ renderer.domElement.addEventListener('pointermove', (event) => {
   }
 });
 
-// ========== CLICK ==========
+// CLICK
 renderer.domElement.addEventListener('pointerdown', (event) => {
   const size = 100;
   const margin = 10;
@@ -136,6 +136,8 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
       const faceIndex = intersects[0].face.materialIndex;
       logEvent(`Clicked face: ${faceIndex}`);
 
+      const oldQuat = camera.quaternion.clone();
+
       switch (faceIndex) {
         case 0: camera.position.set(3, 0, 0); break;
         case 1: camera.position.set(-3, 0, 0); break;
@@ -145,10 +147,15 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
         case 5: camera.position.set(0, 0, -3); break;
       }
       controls.update();
-      orientationCause = 'view cube';
+
+      const newQuat = camera.quaternion.clone();
+      logEvent(
+        `Orientation changed | From: ${quaternionToString(
+          oldQuat
+        )} | To: ${quaternionToString(newQuat)} | Source: view cube`
+      );
     }
   } else {
-    // Start drag rotation tracking
     orientationStart = camera.quaternion.clone();
     orientationActive = true;
     orientationCause = 'mouse drag';
@@ -170,7 +177,7 @@ renderer.domElement.addEventListener('pointerup', () => {
   }
 });
 
-// ========== LOG ==========
+// LOG
 function logEvent(message) {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
@@ -184,7 +191,7 @@ function quaternionToString(q) {
   return `(${q.x.toFixed(2)}, ${q.y.toFixed(2)}, ${q.z.toFixed(2)}, ${q.w.toFixed(2)})`;
 }
 
-// ========== ANIMATE ==========
+// ANIMATE
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
