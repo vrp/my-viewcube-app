@@ -26,13 +26,18 @@ The project has evolved through several approaches:
 
 Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to improve face grouping, but this approach hasn't yielded stable results.
 
-### Latest Updates (Multi-change commit - see Development Philosophy below)
-- **Fixed face mapping** - Corrected material index to color mapping based on actual GLB data
-- **Added face identification display** - Shows which material index/color is currently pointing up
-- **Reverted to snap behavior** - Disabled smooth animations for testing focus
-- **Fixed material index checking** - Only main faces (0-5) get cardinal positioning logic
-- **Restored TrackballControls** - Unlimited rotation capability
-- **Timer display** - For debugging and development
+### Latest Updates
+**Previous multi-change commit:**
+- Fixed face mapping - Corrected material index to color mapping based on actual GLB data
+- Added face identification display - Shows which material index/color is currently pointing up
+- Reverted to snap behavior - Disabled smooth animations for testing focus
+- Fixed material index checking - Only main faces (0-5) get cardinal positioning logic
+- Restored TrackballControls - Unlimited rotation capability
+- Timer display - For debugging and development
+
+**Recent focused commits (one-problem-per-commit):**
+- **Fixed console logging** - All debug output now uses synchronized timestamps
+- **Added comprehensive event logging** - Restored zoom, pan, and orientation change tracking with detailed state transitions
 
 ### Development Philosophy (Updated)
 **One Problem Per Commit**: Starting with next commit, we will tackle exactly one specific problem, fix it completely, commit it, then move to the next. This maintains cleaner git history and easier debugging.
@@ -51,7 +56,16 @@ Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to 
 - Camera orientation behavior has "many problems" per user testing
 - Face normal calculations may need refinement
 - Edge/corner chamfer colors too similar for human testing (all orange/purple gradients)
-- Console still logs too frequently during hover
+
+### Debugging Features (Active)
+- **Synchronized timestamps** - On-screen timer matches console log timestamps for screenshot correlation
+- **Comprehensive event logging**:
+  - Zoom changes: `Zoom changed | From: X | To: Y`
+  - Pan changes: `Pan changed | From: (x,y,z) | To: (x,y,z)`
+  - Orientation changes: `Orientation changed | From: (qx,qy,qz,qw) | To: (qx,qy,qz,qw) | Source: view cube/mouse drag`
+  - Hover events: `Hovered face index: X`
+  - Click events: `Clicked face index: X, Material index: Y`
+- **Face identification display** - Shows which material/color is currently pointing up
 
 ## Detailed Implementation History
 
