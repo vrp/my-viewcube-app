@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const scene = new THREE.Scene();
@@ -12,8 +12,11 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+const controls = new TrackballControls(camera, renderer.domElement);
+controls.rotateSpeed = 5.0;
+controls.zoomSpeed = 1.2;
+controls.panSpeed = 0.8;
+controls.dynamicDampingFactor = 0.3;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -35,6 +38,27 @@ scene.add(light);
 const directionalLight = new THREE.DirectionalLight(0xffffff);
 directionalLight.position.set(0, 20, 10);
 scene.add(directionalLight);
+
+// TIMER
+const timerDiv = document.createElement('div');
+timerDiv.style.position = 'absolute';
+timerDiv.style.top = '10px';
+timerDiv.style.left = '10px';
+timerDiv.style.color = '#000';
+timerDiv.style.fontFamily = 'monospace';
+timerDiv.style.fontSize = '16px';
+document.body.appendChild(timerDiv);
+
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  timerDiv.textContent = `${hh}:${mm}:${ss}:${ms}`;
+  requestAnimationFrame(updateClock);
+}
+updateClock();
 
 window.addEventListener('resize', onWindowResize, false);
 window.addEventListener('mousemove', onMouseMove, false);
@@ -67,7 +91,25 @@ function onMouseClick() {
     const distance = 5;
 
     camera.position.copy(clickedNormal.multiplyScalar(distance));
+    
+    // Set appropriate up vector based on the clicked face normal
+    const absNormal = new THREE.Vector3(
+      Math.abs(clickedNormal.x),
+      Math.abs(clickedNormal.y),
+      Math.abs(clickedNormal.z)
+    );
+    
+    // Check if we're looking straight up or down
+    if (absNormal.y > 0.9) {
+      // Top or bottom face - use special up vector
+      camera.up.set(0, 0, clickedNormal.y > 0 ? -1 : 1);
+    } else {
+      // Side faces - use standard up vector
+      camera.up.set(0, 1, 0);
+    }
+    
     camera.lookAt(new THREE.Vector3(0, 0, 0));
+    camera.updateMatrixWorld();
     controls.update();
   }
 }

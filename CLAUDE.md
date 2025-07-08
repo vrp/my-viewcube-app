@@ -26,6 +26,12 @@ The project has evolved through several approaches:
 
 Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to improve face grouping, but this approach hasn't yielded stable results.
 
+### Latest Updates
+- **Restored TrackballControls** (from OrbitControls) to fix rotation limitations that reappeared in commit 30f5dcc
+- **Added camera.up vector logic** for proper orthographic alignment when clicking faces
+- **Restored timer display** for debugging purposes
+- Currently the beveled cube serves as both the main model and the (future) ViewCube
+
 ## Detailed Implementation History
 
 ### Phase 1: Colored Box Implementation (up to commit 7dd9346)
