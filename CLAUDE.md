@@ -26,11 +26,32 @@ The project has evolved through several approaches:
 
 Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to improve face grouping, but this approach hasn't yielded stable results.
 
-### Latest Updates
-- **Restored TrackballControls** (from OrbitControls) to fix rotation limitations that reappeared in commit 30f5dcc
-- **Added camera.up vector logic** for proper orthographic alignment when clicking faces
-- **Restored timer display** for debugging purposes
-- Currently the beveled cube serves as both the main model and the (future) ViewCube
+### Latest Updates (Multi-change commit - see Development Philosophy below)
+- **Fixed face mapping** - Corrected material index to color mapping based on actual GLB data
+- **Added face identification display** - Shows which material index/color is currently pointing up
+- **Reverted to snap behavior** - Disabled smooth animations for testing focus
+- **Fixed material index checking** - Only main faces (0-5) get cardinal positioning logic
+- **Restored TrackballControls** - Unlimited rotation capability
+- **Timer display** - For debugging and development
+
+### Development Philosophy (Updated)
+**One Problem Per Commit**: Starting with next commit, we will tackle exactly one specific problem, fix it completely, commit it, then move to the next. This maintains cleaner git history and easier debugging.
+
+**Git Commit Messages**: Do not include references to Claude Code, Claude, or Anthropic in commit messages. Keep them focused on the technical changes made.
+
+### Current Todo List (Priority Order)
+1. **Fix camera orientation issues** (HIGH) - Multiple problems identified during testing
+2. **Implement full 26-zone ViewCube functionality** (HIGH) - 6 faces + 12 edges + 8 corners
+3. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
+4. **Fix console logging verbosity** (MEDIUM) - Only log on hover change
+5. **Create reusable ViewCube component class** (LOW) - For integration into other projects
+6. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
+
+### Known Issues (Current Testing Observations)
+- Camera orientation behavior has "many problems" per user testing
+- Face normal calculations may need refinement
+- Edge/corner chamfer colors too similar for human testing (all orange/purple gradients)
+- Console still logs too frequently during hover
 
 ## Detailed Implementation History
 
