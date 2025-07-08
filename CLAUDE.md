@@ -17,27 +17,29 @@ This project uses **bun** (not npm/node):
 ## Current State & Challenges
 
 **Branch**: `beveled_cube` (experimental)
-**Main Issue**: Face detection difficulties with beveled GLB model
+**Status**: Core functionality COMPLETE, minor usability issue remaining
 
 The project has evolved through several approaches:
 1. **Colored box with face materials** (stable face detection)
 2. **TrackballControls experiment** (for free rotation)
-3. **Beveled GLB model** (better visuals, but complex face detection)
+3. **Beveled GLB model** (better visuals, complex face detection) - NOW SOLVED
 
-Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to improve face grouping, but this approach hasn't yielded stable results.
+### Major Breakthrough (Latest Session)
+**FIXED: Complete ViewCube Face Detection System**
+- **Material index mapping system** - Created proper mapping from mesh names to material indices (0-25)
+- **Fixed camera positioning logic** - Proper orthographic views for all main faces, corrected Blue/Yellow face normal mapping
+- **Redundant orientation prevention** - No camera changes when face already correctly oriented ("already correctly oriented - no change needed")
+- **Stabilized hover detection** - Uses material indices instead of unreliable face indices
+- **All 26 zones working** - 6 main faces + 12 edge chamfers + 8 corner chamfers properly detected
 
-### Latest Updates
-**Previous multi-change commit:**
-- Fixed face mapping - Corrected material index to color mapping based on actual GLB data
-- Added face identification display - Shows which material index/color is currently pointing up
-- Reverted to snap behavior - Disabled smooth animations for testing focus
-- Fixed material index checking - Only main faces (0-5) get cardinal positioning logic
-- Restored TrackballControls - Unlimited rotation capability
-- Timer display - For debugging and development
+### Current Issue (Minor - Usability)
+**Edge/Corner Click Target Misalignment**: Edge and corner clickable areas don't align with their visual appearance. Users must click slightly "beyond" the visible edge to register hits. The functionality works, but targeting is unintuitive.
 
-**Recent focused commits (one-problem-per-commit):**
-- **Fixed console logging** - All debug output now uses synchronized timestamps
-- **Added comprehensive event logging** - Restored zoom, pan, and orientation change tracking with detailed state transitions
+**Evidence**: Successfully clicked EdgeChamfer_8, but "pointer tip was actually beyond the chamfer"
+
+### Recent Commits (One-Problem-Per-Commit Philosophy)
+- **17d2a5a** - Fix ViewCube face detection and camera positioning system (MAJOR)
+- **Previous** - Fixed console logging and comprehensive event logging
 
 ### Development Philosophy (Updated)
 **One Problem Per Commit**: Starting with next commit, we will tackle exactly one specific problem, fix it completely, commit it, then move to the next. This maintains cleaner git history and easier debugging.
@@ -45,17 +47,26 @@ Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to 
 **Git Commit Messages**: Do not include references to Claude Code, Claude, or Anthropic in commit messages. Keep them focused on the technical changes made.
 
 ### Current Todo List (Priority Order)
-1. **Fix camera orientation issues** (HIGH) - Multiple problems identified during testing
-2. **Implement full 26-zone ViewCube functionality** (HIGH) - 6 faces + 12 edges + 8 corners
-3. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
-4. **Fix console logging verbosity** (MEDIUM) - Only log on hover change
-5. **Create reusable ViewCube component class** (LOW) - For integration into other projects
-6. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
+1. **Fix edge/corner click target alignment** (HIGH) - Clickable areas don't match visual appearance 
+2. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
+3. **Create reusable ViewCube component class** (LOW) - For integration into other projects
+4. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
 
-### Known Issues (Current Testing Observations)
-- Camera orientation behavior has "many problems" per user testing
-- Face normal calculations may need refinement
-- Edge/corner chamfer colors too similar for human testing (all orange/purple gradients)
+### Completed Tasks ✅
+- ✅ **Fix camera orientation issues** - All main faces work correctly with proper orthographic positioning
+- ✅ **Implement full 26-zone ViewCube functionality** - All 6 faces + 12 edges + 8 corners detected
+- ✅ **Fix console logging verbosity** - Now only logs on material index changes
+- ✅ **Fix material index detection** - Proper mesh name to material index mapping (0-25)
+- ✅ **Prevent redundant camera changes** - "Already correctly oriented" logic working
+
+### Next Session Plan: Fix Edge/Corner Click Target Alignment
+
+**Problem**: Edge and corner clickable areas don't align with visual appearance. Users must click "beyond" visible edges to register hits.
+
+**Planned Solution**:
+1. **Investigate geometry alignment** - Add visual debugging to show actual mesh boundaries vs visual appearance
+2. **Improve click target mapping** - Fine-tune intersection detection for better edge/corner targeting  
+3. **Visual-geometric synchronization** - Ensure clickable areas match user expectations
 
 ### Debugging Features (Active)
 - **Synchronized timestamps** - On-screen timer matches console log timestamps for screenshot correlation
@@ -63,8 +74,9 @@ Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to 
   - Zoom changes: `Zoom changed | From: X | To: Y`
   - Pan changes: `Pan changed | From: (x,y,z) | To: (x,y,z)`
   - Orientation changes: `Orientation changed | From: (qx,qy,qz,qw) | To: (qx,qy,qz,qw) | Source: view cube/mouse drag`
-  - Hover events: `Hovered face index: X`
-  - Click events: `Clicked face index: X, Material index: Y`
+  - Hover events: `Hovered material index: X (MaterialName), Mesh: MeshName`
+  - Click events: `Clicked face index: X, Material index: Y (MaterialName), Mesh: MeshName`
+  - Redundant clicks: `Face Y (MaterialName) already correctly oriented - no change needed`
 - **Face identification display** - Shows which material/color is currently pointing up
 
 ## Detailed Implementation History
@@ -85,21 +97,30 @@ Recent commits show experimentation with subdivision levels (5, 25, 50 cuts) to 
 
 ### Phase 3: GLB Model Integration (commit f59b409 onwards)
 - Beveled cube model supports 26 clickable zones:
-  - Material indices 0-5: Main faces
-  - Material indices 6-17: Edge chamfers
-  - Material indices 18-25: Corner chamfers
+  - Material indices 0-5: Main faces (Red, Green, Blue, Yellow, Magenta, Cyan)
+  - Material indices 6-17: Edge chamfers (12 edges)
+  - Material indices 18-25: Corner chamfers (8 corners)
 - Attempted to use geometry groups for face identification
 - Debug logging revealed complex mesh structure without clear group definitions
 - Subdivision experiments (5, 25, 50 cuts) to optimize face grouping
+
+### Phase 4: Material Index Mapping Solution (commit 17d2a5a)
+- **Breakthrough discovery**: GLB contains 26 separate meshes (Cube001, Cube001_1, ..., Cube001_25)
+- Each mesh has only 1 material and 1-2 faces, explaining the face.materialIndex=0 issue
+- **Solution**: Map mesh names to material indices instead of relying on face.materialIndex
+- **Key functions**: `getMaterialIndexFromMesh()` and `getMaterialInfo()` 
+- **Fixed face normals**: Corrected Blue/Yellow camera position mapping (were swapped)
+- **Redundant click prevention**: Check camera position before applying changes
 
 ## Architecture
 
 ### Current Implementation (src/main.js)
 - Three.js scene with PerspectiveCamera
-- OrbitControls for user interaction
-- GLTFLoader for beveled cube model
-- Raycasting for face detection
-- Click-to-orient camera functionality
+- TrackballControls for unlimited rotation capability
+- GLTFLoader for beveled cube model (26 separate meshes)
+- Raycasting for face detection with mesh name mapping
+- Click-to-orient camera functionality with redundant click prevention
+- Material index mapping system: `getMaterialIndexFromMesh()` and `getMaterialInfo()`
 
 ### Key Technical Decisions
 - Moved from colored box geometry to GLB model for better aesthetics
