@@ -60,10 +60,57 @@ function quaternionToString(q) {
   return `(${q.x.toFixed(2)}, ${q.y.toFixed(2)}, ${q.z.toFixed(2)}, ${q.w.toFixed(2)})`;
 }
 
+// Map mesh names to material indices for the beveled cube GLB model
+function getMaterialIndexFromMesh(meshName) {
+  // Main faces: Cube001 = 0, Cube001_1 = 1, ..., Cube001_5 = 5
+  if (meshName === 'Cube001') return 0;
+  if (meshName.startsWith('Cube001_')) {
+    const suffix = parseInt(meshName.replace('Cube001_', ''));
+    if (suffix >= 1 && suffix <= 5) return suffix; // Main faces 1-5
+    if (suffix >= 6 && suffix <= 17) return suffix; // Edge chamfers 6-17
+    if (suffix >= 18 && suffix <= 25) return suffix; // Corner chamfers 18-25
+  }
+  return -1; // Unknown mesh
+}
+
+// Get material name and color info from material index
+function getMaterialInfo(materialIndex) {
+  const materialMapping = {
+    0: { name: 'Red', color: 'MainFace_0' },
+    1: { name: 'Green', color: 'MainFace_1' },
+    2: { name: 'Blue', color: 'MainFace_2' },
+    3: { name: 'Yellow', color: 'MainFace_3' },
+    4: { name: 'Magenta', color: 'MainFace_4' },
+    5: { name: 'Cyan', color: 'MainFace_5' },
+    6: { name: 'EdgeChamfer_0', color: 'Orange' },
+    7: { name: 'EdgeChamfer_1', color: 'Orange' },
+    8: { name: 'EdgeChamfer_2', color: 'Orange' },
+    9: { name: 'EdgeChamfer_3', color: 'Orange' },
+    10: { name: 'EdgeChamfer_4', color: 'Orange' },
+    11: { name: 'EdgeChamfer_5', color: 'Orange' },
+    12: { name: 'EdgeChamfer_6', color: 'Orange' },
+    13: { name: 'EdgeChamfer_7', color: 'Orange' },
+    14: { name: 'EdgeChamfer_8', color: 'Orange' },
+    15: { name: 'EdgeChamfer_9', color: 'Orange' },
+    16: { name: 'EdgeChamfer_10', color: 'Orange' },
+    17: { name: 'EdgeChamfer_11', color: 'Orange' },
+    18: { name: 'CornerChamfer_0', color: 'Purple' },
+    19: { name: 'CornerChamfer_1', color: 'Purple' },
+    20: { name: 'CornerChamfer_2', color: 'Purple' },
+    21: { name: 'CornerChamfer_3', color: 'Purple' },
+    22: { name: 'CornerChamfer_4', color: 'Purple' },
+    23: { name: 'CornerChamfer_5', color: 'Purple' },
+    24: { name: 'CornerChamfer_6', color: 'Purple' },
+    25: { name: 'CornerChamfer_7', color: 'Purple' }
+  };
+  return materialMapping[materialIndex] || { name: 'Unknown', color: 'Unknown' };
+}
+
 const loader = new GLTFLoader();
 loader.load('./beveled_cube_chamfered.glb', function (gltf) {
   model = gltf.scene;
   scene.add(model);
+  logEvent(`GLB model loaded with ${gltf.scene.children.length} meshes`);
 }, undefined, function (error) {
   logEvent(`Error loading GLB: ${error}`);
 });
@@ -114,14 +161,14 @@ function updateFaceInfo() {
   // Get camera's up direction in world space
   const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
   
-  // Define face normals for the 6 main faces (based on GLB inspection)
+  // Define face normals for the 6 main faces (using corrected material indices)
   const faces = [
     { index: 0, normal: new THREE.Vector3(1, 0, 0), name: 'Red' },
     { index: 1, normal: new THREE.Vector3(-1, 0, 0), name: 'Green' },
     { index: 2, normal: new THREE.Vector3(0, 0, 1), name: 'Blue' },
-    { index: 3, normal: new THREE.Vector3(0, -1, 0), name: 'Yellow' },
+    { index: 3, normal: new THREE.Vector3(0, 0, -1), name: 'Yellow' },
     { index: 4, normal: new THREE.Vector3(0, 1, 0), name: 'Magenta' },
-    { index: 5, normal: new THREE.Vector3(0, 0, -1), name: 'Cyan' }
+    { index: 5, normal: new THREE.Vector3(0, -1, 0), name: 'Cyan' }
   ];
   
   // Find which face normal is most aligned with camera up
@@ -238,62 +285,97 @@ function onMouseClick() {
   if (intersects.length > 0) {
     const intersect = intersects[0];
     const faceIndex = intersect.faceIndex;
-    const materialIndex = intersect.face.materialIndex;
-    logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex}`);
+    const meshName = intersect.object.name;
+    const materialIndex = getMaterialIndexFromMesh(meshName);
+    const materialInfo = getMaterialInfo(materialIndex);
+    
+    logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex} (${materialInfo.name}), Mesh: ${meshName}`);
 
     const oldQuat = camera.quaternion.clone();
     
-    const clickedNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
+    // Get proper camera position and orientation based on material index
     const distance = 5;
+    let targetPosition = new THREE.Vector3();
+    let targetUp = new THREE.Vector3(0, 1, 0);
     
     // Check if this is a main face (0-5), edge chamfer (6-17), or corner chamfer (18-25)
     const isMainFace = materialIndex >= 0 && materialIndex <= 5;
-
-    // Calculate target position
-    camera.position.copy(clickedNormal.multiplyScalar(distance));
     
-    // Calculate smart up vector based on current orientation
-    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-    const absNormal = new THREE.Vector3(
-      Math.abs(clickedNormal.x),
-      Math.abs(clickedNormal.y),
-      Math.abs(clickedNormal.z)
-    );
-    
-    // Only apply special cardinal logic for main faces
-    if (isMainFace && absNormal.y > 0.9) {
-      // For top/bottom faces, find the best up vector
-      const candidates = [
-        new THREE.Vector3(1, 0, 0),
-        new THREE.Vector3(-1, 0, 0),
-        new THREE.Vector3(0, 0, 1),
-        new THREE.Vector3(0, 0, -1)
-      ];
+    if (isMainFace) {
+      // For main faces, define target positions and check if already oriented correctly
+      let shouldReorient = false;
       
-      // Choose the candidate that's closest to current up
-      let bestUp = candidates[0];
-      let bestDot = currentUp.dot(candidates[0]);
-      
-      for (const candidate of candidates) {
-        const dot = currentUp.dot(candidate);
-        if (dot > bestDot) {
-          bestDot = dot;
-          bestUp = candidate;
-        }
+      switch (materialIndex) {
+        case 0: // Red - Right face (+X)
+          targetPosition.set(distance, 0, 0);
+          targetUp.set(0, 1, 0);
+          // Check if camera is already positioned correctly for this face
+          shouldReorient = Math.abs(camera.position.x - distance) > 0.1 || 
+                          Math.abs(camera.position.y) > 0.1 || 
+                          Math.abs(camera.position.z) > 0.1;
+          break;
+        case 1: // Green - Left face (-X)
+          targetPosition.set(-distance, 0, 0);
+          targetUp.set(0, 1, 0);
+          shouldReorient = Math.abs(camera.position.x + distance) > 0.1 || 
+                          Math.abs(camera.position.y) > 0.1 || 
+                          Math.abs(camera.position.z) > 0.1;
+          break;
+        case 2: // Blue - Back face (-Z)
+          targetPosition.set(0, 0, -distance);
+          targetUp.set(0, 1, 0);
+          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                          Math.abs(camera.position.y) > 0.1 || 
+                          Math.abs(camera.position.z + distance) > 0.1;
+          break;
+        case 3: // Yellow - Front face (+Z)
+          targetPosition.set(0, 0, distance);
+          targetUp.set(0, 1, 0);
+          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                          Math.abs(camera.position.y) > 0.1 || 
+                          Math.abs(camera.position.z - distance) > 0.1;
+          break;
+        case 4: // Magenta - Top face (+Y)
+          targetPosition.set(0, distance, 0);
+          targetUp.set(0, 0, -1);
+          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                          Math.abs(camera.position.y - distance) > 0.1 || 
+                          Math.abs(camera.position.z) > 0.1;
+          break;
+        case 5: // Cyan - Bottom face (-Y)
+          targetPosition.set(0, -distance, 0);
+          targetUp.set(0, 0, 1);
+          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                          Math.abs(camera.position.y + distance) > 0.1 || 
+                          Math.abs(camera.position.z) > 0.1;
+          break;
       }
       
-      camera.up.copy(bestUp);
+      // Only apply changes if camera needs to be reoriented
+      if (!shouldReorient) {
+        logEvent(`Face ${materialIndex} (${materialInfo.name}) already correctly oriented - no change needed`);
+        return; // Skip camera changes
+      }
     } else {
-      // For side faces, try to keep current up if possible
+      // For edges and corners, use the face normal from the intersected geometry
+      const clickedNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
+      targetPosition.copy(clickedNormal.multiplyScalar(distance));
+      
+      // For non-main faces, use smart up vector calculation
+      const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
       const projectedUp = currentUp.clone();
       projectedUp.sub(clickedNormal.clone().multiplyScalar(currentUp.dot(clickedNormal)));
       
       if (projectedUp.length() > 0.1) {
-        camera.up.copy(projectedUp.normalize());
+        targetUp.copy(projectedUp.normalize());
       } else {
-        camera.up.set(0, 1, 0);
+        targetUp.set(0, 1, 0);
       }
     }
+    
+    // Apply the calculated position and orientation
+    camera.position.copy(targetPosition);
+    camera.up.copy(targetUp);
     
     camera.lookAt(new THREE.Vector3(0, 0, 0));
     camera.updateMatrixWorld();
@@ -312,10 +394,15 @@ function animate() {
   if (model) {
     const intersects = raycaster.intersectObject(model, true);
     if (intersects.length > 0) {
-      const faceIndex = intersects[0].faceIndex;
-      if (faceIndex !== lastHoveredFaceIndex) {
-        logEvent(`Hovered face index: ${faceIndex}`);
-        lastHoveredFaceIndex = faceIndex;
+      const intersect = intersects[0];
+      const meshName = intersect.object.name;
+      const materialIndex = getMaterialIndexFromMesh(meshName);
+      const materialInfo = getMaterialInfo(materialIndex);
+      
+      // Use material index for hover detection instead of face index
+      if (materialIndex !== lastHoveredFaceIndex) {
+        logEvent(`Hovered material index: ${materialIndex} (${materialInfo.name}), Mesh: ${meshName}`);
+        lastHoveredFaceIndex = materialIndex;
       }
     } else {
       lastHoveredFaceIndex = null;
