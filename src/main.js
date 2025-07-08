@@ -33,12 +33,22 @@ let startQuaternion = new THREE.Quaternion();
 let targetPosition = new THREE.Vector3();
 let targetQuaternion = new THREE.Quaternion();
 
+// LOG function - define early so it's available everywhere
+function logEvent(message) {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  console.log(`[${hh}:${mm}:${ss}:${ms}] ${message}`);
+}
+
 const loader = new GLTFLoader();
 loader.load('./beveled_cube_chamfered.glb', function (gltf) {
   model = gltf.scene;
   scene.add(model);
 }, undefined, function (error) {
-  console.error(error);
+  logEvent(`Error loading GLB: ${error}`);
 });
 
 const light = new THREE.HemisphereLight(0xffffff, 0x444444);
@@ -140,7 +150,7 @@ function onMouseClick() {
     const intersect = intersects[0];
     const faceIndex = intersect.faceIndex;
     const materialIndex = intersect.face.materialIndex;
-    console.log('Clicked face index:', faceIndex, 'Material index:', materialIndex);
+    logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex}`);
 
     const clickedNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
     const distance = 5;
@@ -210,7 +220,7 @@ function animate() {
     if (intersects.length > 0) {
       const faceIndex = intersects[0].faceIndex;
       if (faceIndex !== lastHoveredFaceIndex) {
-        console.log('Hovered face index:', faceIndex);
+        logEvent(`Hovered face index: ${faceIndex}`);
         lastHoveredFaceIndex = faceIndex;
       }
     } else {
