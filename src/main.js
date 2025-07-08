@@ -33,6 +33,19 @@ let startQuaternion = new THREE.Quaternion();
 let targetPosition = new THREE.Vector3();
 let targetQuaternion = new THREE.Quaternion();
 
+// Event tracking state
+let lastZoomDistance = null;
+let zoomStartDistance = null;
+let zoomTimeout = null;
+
+let lastPanTarget = null;
+let panStart = null;
+let panTimeout = null;
+
+let orientationStart = null;
+let orientationActive = false;
+let orientationCause = null;
+
 // LOG function - define early so it's available everywhere
 function logEvent(message) {
   const now = new Date();
@@ -41,6 +54,10 @@ function logEvent(message) {
   const ss = String(now.getSeconds()).padStart(2, '0');
   const ms = String(now.getMilliseconds()).padStart(3, '0');
   console.log(`[${hh}:${mm}:${ss}:${ms}] ${message}`);
+}
+
+function quaternionToString(q) {
+  return `(${q.x.toFixed(2)}, ${q.y.toFixed(2)}, ${q.z.toFixed(2)}, ${q.w.toFixed(2)})`;
 }
 
 const loader = new GLTFLoader();
@@ -124,9 +141,81 @@ function updateFaceInfo() {
   }
 }
 
+// Initialize tracking variables
+lastZoomDistance = camera.position.distanceTo(controls.target);
+lastPanTarget = controls.target.clone();
+
 window.addEventListener('resize', onWindowResize, false);
 window.addEventListener('mousemove', onMouseMove, false);
 window.addEventListener('click', onMouseClick, false);
+
+// Zoom tracking
+renderer.domElement.addEventListener('wheel', () => {
+  if (!zoomTimeout) zoomStartDistance = lastZoomDistance;
+  clearTimeout(zoomTimeout);
+  zoomTimeout = setTimeout(() => {
+    const newZoom = camera.position.distanceTo(controls.target);
+    if (Math.abs(newZoom - zoomStartDistance) > 0.001) {
+      logEvent(`Zoom changed | From: ${zoomStartDistance.toFixed(2)} | To: ${newZoom.toFixed(2)}`);
+    }
+    lastZoomDistance = newZoom;
+    zoomTimeout = null;
+  }, 200);
+});
+
+// Pan and zoom tracking on controls change
+controls.addEventListener('change', () => {
+  // ZOOM (touch pinch or programmatic)
+  const newZoom = camera.position.distanceTo(controls.target);
+  if (Math.abs(newZoom - lastZoomDistance) > 0.001) {
+    if (!zoomTimeout) zoomStartDistance = lastZoomDistance;
+    clearTimeout(zoomTimeout);
+    zoomTimeout = setTimeout(() => {
+      const finalZoom = camera.position.distanceTo(controls.target);
+      if (Math.abs(finalZoom - zoomStartDistance) > 0.001) {
+        logEvent(`Zoom changed | From: ${zoomStartDistance.toFixed(2)} | To: ${finalZoom.toFixed(2)}`);
+      }
+      lastZoomDistance = finalZoom;
+      zoomTimeout = null;
+    }, 200);
+  }
+  
+  // PAN
+  if (!controls.target.equals(lastPanTarget)) {
+    if (!panTimeout) panStart = lastPanTarget.clone();
+    clearTimeout(panTimeout);
+    panTimeout = setTimeout(() => {
+      logEvent(`Pan changed | From: (${panStart.x.toFixed(2)}, ${panStart.y.toFixed(2)}, ${panStart.z.toFixed(2)}) | To: (${controls.target.x.toFixed(2)}, ${controls.target.y.toFixed(2)}, ${controls.target.z.toFixed(2)})`);
+      lastPanTarget.copy(controls.target);
+      panTimeout = null;
+    }, 200);
+  }
+});
+
+// Orientation tracking
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  // Skip if clicking on ViewCube area  
+  const size = 100;
+  const margin = 10;
+  const inCube = event.clientX > window.innerWidth - size - margin && event.clientY < size + margin;
+  
+  if (!inCube && !orientationActive) {
+    orientationStart = camera.quaternion.clone();
+    orientationActive = true;
+    orientationCause = 'mouse drag';
+  }
+});
+
+renderer.domElement.addEventListener('pointerup', () => {
+  if (orientationActive) {
+    const orientationEnd = camera.quaternion.clone();
+    if (!orientationStart.equals(orientationEnd)) {
+      logEvent(`Orientation changed | From: ${quaternionToString(orientationStart)} | To: ${quaternionToString(orientationEnd)} | Source: ${orientationCause || 'unknown'}`);
+    }
+    orientationActive = false;
+    orientationCause = null;
+  }
+});
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -152,6 +241,8 @@ function onMouseClick() {
     const materialIndex = intersect.face.materialIndex;
     logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex}`);
 
+    const oldQuat = camera.quaternion.clone();
+    
     const clickedNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
     const distance = 5;
     
@@ -208,6 +299,9 @@ function onMouseClick() {
     camera.updateMatrixWorld();
     controls.update();
     updateFaceInfo();
+    
+    const newQuat = camera.quaternion.clone();
+    logEvent(`Orientation changed | From: ${quaternionToString(oldQuat)} | To: ${quaternionToString(newQuat)} | Source: view cube`);
   }
 }
 
