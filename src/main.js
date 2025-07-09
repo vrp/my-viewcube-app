@@ -73,6 +73,12 @@ function getMaterialIndexFromMesh(meshName) {
   return -1; // Unknown mesh
 }
 
+// Get material index from intersection (handles both old and new model structures)
+function getMaterialIndexFromIntersection(intersect) {
+  // Use mesh name mapping for both models since the new model still has separate meshes
+  return getMaterialIndexFromMesh(intersect.object.name);
+}
+
 // Get material name and color info from material index
 function getMaterialInfo(materialIndex) {
   const materialMapping = {
@@ -106,8 +112,9 @@ function getMaterialInfo(materialIndex) {
   return materialMapping[materialIndex] || { name: 'Unknown', color: 'Unknown' };
 }
 
+
 const loader = new GLTFLoader();
-loader.load('./beveled_cube_chamfered.glb', function (gltf) {
+loader.load('./chamfered_cube.glb', function (gltf) {
   model = gltf.scene;
   scene.add(model);
   logEvent(`GLB model loaded with ${gltf.scene.children.length} meshes`);
@@ -286,7 +293,7 @@ function onMouseClick() {
     const intersect = intersects[0];
     const faceIndex = intersect.faceIndex;
     const meshName = intersect.object.name;
-    const materialIndex = getMaterialIndexFromMesh(meshName);
+    const materialIndex = getMaterialIndexFromIntersection(intersect);
     const materialInfo = getMaterialInfo(materialIndex);
     
     logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex} (${materialInfo.name}), Mesh: ${meshName}`);
@@ -396,7 +403,7 @@ function animate() {
     if (intersects.length > 0) {
       const intersect = intersects[0];
       const meshName = intersect.object.name;
-      const materialIndex = getMaterialIndexFromMesh(meshName);
+      const materialIndex = getMaterialIndexFromIntersection(intersect);
       const materialInfo = getMaterialInfo(materialIndex);
       
       // Use material index for hover detection instead of face index
