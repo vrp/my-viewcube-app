@@ -16,28 +16,30 @@ This project uses **bun** (not npm/node):
 
 ## Current State & Challenges
 
-**Branch**: `beveled_cube` (experimental)
-**Status**: Core functionality COMPLETE, minor usability issue remaining
+**Branch**: `test-new-chamfer-model` (experimental)
+**Status**: Model upgrade COMPLETE, camera positioning needs refinement
 
 The project has evolved through several approaches:
 1. **Colored box with face materials** (stable face detection)
 2. **TrackballControls experiment** (for free rotation)
-3. **Beveled GLB model** (better visuals, complex face detection) - NOW SOLVED
+3. **Beveled GLB model** (better visuals, complex face detection) - SOLVED
+4. **New chamfered model** (improved click targeting) - COMPLETE
 
 ### Major Breakthrough (Latest Session)
-**FIXED: Complete ViewCube Face Detection System**
-- **Material index mapping system** - Created proper mapping from mesh names to material indices (0-25)
-- **Fixed camera positioning logic** - Proper orthographic views for all main faces, corrected Blue/Yellow face normal mapping
-- **Redundant orientation prevention** - No camera changes when face already correctly oriented ("already correctly oriented - no change needed")
-- **Stabilized hover detection** - Uses material indices instead of unreliable face indices
-- **All 26 zones working** - 6 main faces + 12 edge chamfers + 8 corner chamfers properly detected
+**SOLVED: Edge/Corner Click Target Alignment**
+- **New chamfered_cube.glb model** - Wider chamfers for better click targeting
+- **Improved user experience** - Much easier to click on edges and corners
+- **All 26 zones functional** - 6 main faces + 12 edge chamfers + 8 corner chamfers properly detected
+- **Material index mapping maintained** - Proper mesh name to material index mapping (0-25)
+- **Model compatibility layer** - Added `getMaterialIndexFromIntersection()` for future model changes
 
-### Current Issue (Minor - Usability)
-**Edge/Corner Click Target Misalignment**: Edge and corner clickable areas don't align with their visual appearance. Users must click slightly "beyond" the visible edge to register hits. The functionality works, but targeting is unintuitive.
+### Current Issue (Minor - Camera Positioning)
+**Edge/Corner Camera Positioning**: While edges and corners are now easy to click, some clicks produce identical camera quaternions or minimal camera movement, resulting in unclear views.
 
-**Evidence**: Successfully clicked EdgeChamfer_8, but "pointer tip was actually beyond the chamfer"
+**Evidence**: `Orientation changed | From: (0.37, -0.10, 0.25, 0.89) | To: (0.37, -0.10, 0.25, 0.89)` - no actual change
 
 ### Recent Commits (One-Problem-Per-Commit Philosophy)
+- **6ef4008** - Switch to new chamfered_cube.glb model with improved click targeting (MAJOR)
 - **17d2a5a** - Fix ViewCube face detection and camera positioning system (MAJOR)
 - **Previous** - Fixed console logging and comprehensive event logging
 
@@ -47,26 +49,27 @@ The project has evolved through several approaches:
 **Git Commit Messages**: Do not include references to Claude Code, Claude, or Anthropic in commit messages. Keep them focused on the technical changes made.
 
 ### Current Todo List (Priority Order)
-1. **Fix edge/corner click target alignment** (HIGH) - Clickable areas don't match visual appearance 
+1. **Fix edge/corner camera positioning** (HIGH) - Some clicks produce identical quaternions or minimal camera movement
 2. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
 3. **Create reusable ViewCube component class** (LOW) - For integration into other projects
 4. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
 
 ### Completed Tasks ✅
+- ✅ **Fix edge/corner click target alignment** - New chamfered_cube.glb model with wider chamfers
 - ✅ **Fix camera orientation issues** - All main faces work correctly with proper orthographic positioning
 - ✅ **Implement full 26-zone ViewCube functionality** - All 6 faces + 12 edges + 8 corners detected
 - ✅ **Fix console logging verbosity** - Now only logs on material index changes
 - ✅ **Fix material index detection** - Proper mesh name to material index mapping (0-25)
 - ✅ **Prevent redundant camera changes** - "Already correctly oriented" logic working
 
-### Next Session Plan: Fix Edge/Corner Click Target Alignment
+### Next Session Plan: Fix Edge/Corner Camera Positioning
 
-**Problem**: Edge and corner clickable areas don't align with visual appearance. Users must click "beyond" visible edges to register hits.
+**Problem**: Edge and corner clicks sometimes produce identical camera quaternions or minimal movement, resulting in unclear views.
 
 **Planned Solution**:
-1. **Investigate geometry alignment** - Add visual debugging to show actual mesh boundaries vs visual appearance
-2. **Improve click target mapping** - Fine-tune intersection detection for better edge/corner targeting  
-3. **Visual-geometric synchronization** - Ensure clickable areas match user expectations
+1. **Define specific camera positions** - Create lookup table for edges (materials 6-17) and corners (materials 18-25)
+2. **Replace dynamic calculation** - Move from face normal approach to predefined orthographic/isometric positions
+3. **Ensure distinct views** - Each zone should produce a clear, distinct camera orientation
 
 ### Debugging Features (Active)
 - **Synchronized timestamps** - On-screen timer matches console log timestamps for screenshot correlation
@@ -112,15 +115,22 @@ The project has evolved through several approaches:
 - **Fixed face normals**: Corrected Blue/Yellow camera position mapping (were swapped)
 - **Redundant click prevention**: Check camera position before applying changes
 
+### Phase 5: New Chamfered Model Implementation (commit 6ef4008)
+- **New model**: `chamfered_cube.glb` with wider chamfers for better click targeting
+- **Model compatibility**: Added `getMaterialIndexFromIntersection()` for future model changes
+- **Click targeting improvement**: Wider chamfers make edges and corners much easier to click
+- **All 26 zones maintained**: 6 main faces + 12 edge chamfers + 8 corner chamfers
+- **User experience enhancement**: No more "click beyond" issues for edge/corner targeting
+
 ## Architecture
 
 ### Current Implementation (src/main.js)
 - Three.js scene with PerspectiveCamera
 - TrackballControls for unlimited rotation capability
-- GLTFLoader for beveled cube model (26 separate meshes)
+- GLTFLoader for chamfered cube model (26 separate meshes)
 - Raycasting for face detection with mesh name mapping
 - Click-to-orient camera functionality with redundant click prevention
-- Material index mapping system: `getMaterialIndexFromMesh()` and `getMaterialInfo()`
+- Material index mapping system: `getMaterialIndexFromMesh()`, `getMaterialIndexFromIntersection()`, and `getMaterialInfo()`
 
 ### Key Technical Decisions
 - Moved from colored box geometry to GLB model for better aesthetics
@@ -144,7 +154,8 @@ The project has evolved through several approaches:
 ## Important Files
 
 - `src/main.js` - Main application logic
-- `public/beveled_cube_chamfered.glb` - Current 3D model
+- `public/chamfered_cube.glb` - Current 3D model (new, improved chamfer width)
+- `public/beveled_cube_chamfered.glb` - Previous 3D model (still available)
 - Previous commits contain colored box implementation worth referencing
 
 ## Key Working Implementations
