@@ -244,109 +244,76 @@ function createDebugPanel() {
 // Create the debug panel
 createDebugPanel();
 
+// Camera position lookup table for all 26 features
+const CAMERA_POSITIONS = {
+  // Main faces (0-5) - Orthographic views
+  0: { position: [5, 0, 0], up: [0, 1, 0], description: 'Red (Right Face)' },
+  1: { position: [-5, 0, 0], up: [0, 1, 0], description: 'Green (Left Face)' },
+  2: { position: [0, 0, -5], up: [0, 1, 0], description: 'Blue (Back Face)' },
+  3: { position: [0, 0, 5], up: [0, 1, 0], description: 'Yellow (Front Face)' },
+  4: { position: [0, 5, 0], up: [0, 0, -1], description: 'Magenta (Top Face)' },
+  5: { position: [0, -5, 0], up: [0, 0, 1], description: 'Cyan (Bottom Face)' },
+  
+  // Edges (6-17) - Isometric views showing 2 adjacent faces
+  6: { position: [3.5, 3.5, 0], up: [0, 0, -1], description: 'Edge 0 (Right-Top)' },
+  7: { position: [-3.5, 3.5, 0], up: [0, 0, -1], description: 'Edge 1 (Left-Top)' },
+  8: { position: [-3.5, -3.5, 0], up: [0, 0, 1], description: 'Edge 2 (Left-Bottom)' },
+  9: { position: [3.5, -3.5, 0], up: [0, 0, 1], description: 'Edge 3 (Right-Bottom)' },
+  10: { position: [0, 3.5, -3.5], up: [0, 0, -1], description: 'Edge 4 (Back-Top)' },
+  11: { position: [0, -3.5, -3.5], up: [0, 0, 1], description: 'Edge 5 (Back-Bottom)' },
+  12: { position: [3.5, 0, -3.5], up: [0, 1, 0], description: 'Edge 6 (Right-Back)' },
+  13: { position: [-3.5, 0, -3.5], up: [0, 1, 0], description: 'Edge 7 (Left-Back)' },
+  14: { position: [3.5, 0, 3.5], up: [0, 1, 0], description: 'Edge 8 (Right-Front)' },
+  15: { position: [-3.5, 0, 3.5], up: [0, 1, 0], description: 'Edge 9 (Left-Front)' },
+  16: { position: [0, 3.5, 3.5], up: [0, 0, -1], description: 'Edge 10 (Front-Top)' },
+  17: { position: [0, -3.5, 3.5], up: [0, 0, 1], description: 'Edge 11 (Front-Bottom)' },
+  
+  // Corners (18-25) - Isometric views showing 3 adjacent faces
+  18: { position: [2.9, 2.9, -2.9], up: [0, 0, -1], description: 'Corner 0 (Right-Top-Back)' },
+  19: { position: [-2.9, 2.9, -2.9], up: [0, 0, -1], description: 'Corner 1 (Left-Top-Back)' },
+  20: { position: [-2.9, -2.9, -2.9], up: [0, 0, 1], description: 'Corner 2 (Left-Bottom-Back)' },
+  21: { position: [2.9, -2.9, -2.9], up: [0, 0, 1], description: 'Corner 3 (Right-Bottom-Back)' },
+  22: { position: [2.9, 2.9, 2.9], up: [0, 0, -1], description: 'Corner 4 (Right-Top-Front)' },
+  23: { position: [-2.9, 2.9, 2.9], up: [0, 0, -1], description: 'Corner 5 (Left-Top-Front)' },
+  24: { position: [-2.9, -2.9, 2.9], up: [0, 0, 1], description: 'Corner 6 (Left-Bottom-Front)' },
+  25: { position: [2.9, -2.9, 2.9], up: [0, 0, 1], description: 'Corner 7 (Right-Bottom-Front)' }
+};
+
+// Function to check if camera is already correctly positioned for a feature
+function isCameraCorrectlyOriented(materialIndex, tolerance = 0.1) {
+  const config = CAMERA_POSITIONS[materialIndex];
+  if (!config) return false;
+  
+  const [x, y, z] = config.position;
+  return Math.abs(camera.position.x - x) <= tolerance &&
+         Math.abs(camera.position.y - y) <= tolerance &&
+         Math.abs(camera.position.z - z) <= tolerance;
+}
+
 // Function to set camera position for a given material index
 function setCameraForMaterial(materialIndex, source = 'direct') {
   const materialInfo = getMaterialInfo(materialIndex);
-  const oldQuat = camera.quaternion.clone();
+  const config = CAMERA_POSITIONS[materialIndex];
   
-  // Get proper camera position and orientation based on material index
-  const distance = 5;
-  let targetPosition = new THREE.Vector3();
-  let targetUp = new THREE.Vector3(0, 1, 0);
-  
-  // Check if this is a main face (0-5), edge chamfer (6-17), or corner chamfer (18-25)
-  const isMainFace = materialIndex >= 0 && materialIndex <= 5;
-  
-  if (isMainFace) {
-    // For main faces, define target positions and check if already oriented correctly
-    let shouldReorient = false;
-    
-    switch (materialIndex) {
-      case 0: // Red - Right face (+X)
-        targetPosition.set(distance, 0, 0);
-        targetUp.set(0, 1, 0);
-        // Check if camera is already positioned correctly for this face
-        shouldReorient = Math.abs(camera.position.x - distance) > 0.1 || 
-                        Math.abs(camera.position.y) > 0.1 || 
-                        Math.abs(camera.position.z) > 0.1;
-        break;
-      case 1: // Green - Left face (-X)
-        targetPosition.set(-distance, 0, 0);
-        targetUp.set(0, 1, 0);
-        shouldReorient = Math.abs(camera.position.x + distance) > 0.1 || 
-                        Math.abs(camera.position.y) > 0.1 || 
-                        Math.abs(camera.position.z) > 0.1;
-        break;
-      case 2: // Blue - Back face (-Z)
-        targetPosition.set(0, 0, -distance);
-        targetUp.set(0, 1, 0);
-        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                        Math.abs(camera.position.y) > 0.1 || 
-                        Math.abs(camera.position.z + distance) > 0.1;
-        break;
-      case 3: // Yellow - Front face (+Z)
-        targetPosition.set(0, 0, distance);
-        targetUp.set(0, 1, 0);
-        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                        Math.abs(camera.position.y) > 0.1 || 
-                        Math.abs(camera.position.z - distance) > 0.1;
-        break;
-      case 4: // Magenta - Top face (+Y)
-        targetPosition.set(0, distance, 0);
-        targetUp.set(0, 0, -1);
-        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                        Math.abs(camera.position.y - distance) > 0.1 || 
-                        Math.abs(camera.position.z) > 0.1;
-        break;
-      case 5: // Cyan - Bottom face (-Y)
-        targetPosition.set(0, -distance, 0);
-        targetUp.set(0, 0, 1);
-        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                        Math.abs(camera.position.y + distance) > 0.1 || 
-                        Math.abs(camera.position.z) > 0.1;
-        break;
-    }
-    
-    // Only apply changes if camera needs to be reoriented
-    if (!shouldReorient) {
-      logEvent(`Face ${materialIndex} (${materialInfo.name}) already correctly oriented - no change needed`);
-      return; // Skip camera changes
-    }
-  } else {
-    // For edges and corners, check if we have stored intersect data
-    if (setCameraForMaterial.lastIntersect) {
-      const intersect = setCameraForMaterial.lastIntersect;
-      const clickedNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
-      targetPosition.copy(clickedNormal.multiplyScalar(distance));
-      
-      // For non-main faces, use smart up vector calculation
-      const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-      const projectedUp = currentUp.clone();
-      projectedUp.sub(clickedNormal.clone().multiplyScalar(currentUp.dot(clickedNormal)));
-      
-      if (projectedUp.length() > 0.1) {
-        targetUp.copy(projectedUp.normalize());
-      } else {
-        targetUp.set(0, 1, 0);
-      }
-      
-      // Clear the stored intersect
-      setCameraForMaterial.lastIntersect = null;
-    } else {
-      // Fallback for debug panel - use predefined positions
-      // This is where we'll implement proper edge/corner positions
-      const angle = (materialIndex - 6) * (Math.PI / 6); // Placeholder calculation
-      targetPosition.set(
-        distance * Math.cos(angle),
-        distance * 0.5,
-        distance * Math.sin(angle)
-      );
-    }
+  if (!config) {
+    logEvent(`No camera position defined for material index ${materialIndex}`);
+    return;
   }
   
-  // Apply the calculated position and orientation
-  camera.position.copy(targetPosition);
-  camera.up.copy(targetUp);
+  // Check if camera is already correctly oriented
+  if (isCameraCorrectlyOriented(materialIndex)) {
+    logEvent(`Feature ${materialIndex} (${materialInfo.name}) already correctly oriented - no change needed`);
+    return;
+  }
+  
+  const oldQuat = camera.quaternion.clone();
+  
+  // Apply the predefined position and orientation
+  const [x, y, z] = config.position;
+  const [ux, uy, uz] = config.up;
+  
+  camera.position.set(x, y, z);
+  camera.up.set(ux, uy, uz);
   
   camera.lookAt(new THREE.Vector3(0, 0, 0));
   camera.updateMatrixWorld();
@@ -488,13 +455,6 @@ function onMouseClick() {
     const materialInfo = getMaterialInfo(materialIndex);
     
     logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex} (${materialInfo.name}), Mesh: ${meshName}`);
-    
-    // For edges and corners that aren't implemented in setCameraForMaterial yet,
-    // we need to pass the intersect data for face normal calculation
-    if (materialIndex >= 6) {
-      // Store the intersect for edge/corner handling
-      setCameraForMaterial.lastIntersect = intersect;
-    }
     
     setCameraForMaterial(materialIndex, 'view cube');
   }
