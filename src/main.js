@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import './style.css';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf0f0f0);
@@ -82,32 +83,32 @@ function getMaterialIndexFromIntersection(intersect) {
 // Get material name and color info from material index
 function getMaterialInfo(materialIndex) {
   const materialMapping = {
-    0: { name: 'Red', color: 'MainFace_0' },
-    1: { name: 'Green', color: 'MainFace_1' },
-    2: { name: 'Blue', color: 'MainFace_2' },
-    3: { name: 'Yellow', color: 'MainFace_3' },
-    4: { name: 'Magenta', color: 'MainFace_4' },
-    5: { name: 'Cyan', color: 'MainFace_5' },
-    6: { name: 'EdgeChamfer_0', color: 'Orange' },
-    7: { name: 'EdgeChamfer_1', color: 'Orange' },
-    8: { name: 'EdgeChamfer_2', color: 'Orange' },
-    9: { name: 'EdgeChamfer_3', color: 'Orange' },
-    10: { name: 'EdgeChamfer_4', color: 'Orange' },
-    11: { name: 'EdgeChamfer_5', color: 'Orange' },
-    12: { name: 'EdgeChamfer_6', color: 'Orange' },
-    13: { name: 'EdgeChamfer_7', color: 'Orange' },
-    14: { name: 'EdgeChamfer_8', color: 'Orange' },
-    15: { name: 'EdgeChamfer_9', color: 'Orange' },
-    16: { name: 'EdgeChamfer_10', color: 'Orange' },
-    17: { name: 'EdgeChamfer_11', color: 'Orange' },
-    18: { name: 'CornerChamfer_0', color: 'Purple' },
-    19: { name: 'CornerChamfer_1', color: 'Purple' },
-    20: { name: 'CornerChamfer_2', color: 'Purple' },
-    21: { name: 'CornerChamfer_3', color: 'Purple' },
-    22: { name: 'CornerChamfer_4', color: 'Purple' },
-    23: { name: 'CornerChamfer_5', color: 'Purple' },
-    24: { name: 'CornerChamfer_6', color: 'Purple' },
-    25: { name: 'CornerChamfer_7', color: 'Purple' }
+    0: { name: 'Red (Right Face)', color: 'MainFace_0' },
+    1: { name: 'Green (Left Face)', color: 'MainFace_1' },
+    2: { name: 'Blue (Back Face)', color: 'MainFace_2' },
+    3: { name: 'Yellow (Front Face)', color: 'MainFace_3' },
+    4: { name: 'Magenta (Top Face)', color: 'MainFace_4' },
+    5: { name: 'Cyan (Bottom Face)', color: 'MainFace_5' },
+    6: { name: 'Edge 0', color: 'Orange' },
+    7: { name: 'Edge 1', color: 'Orange' },
+    8: { name: 'Edge 2', color: 'Orange' },
+    9: { name: 'Edge 3', color: 'Orange' },
+    10: { name: 'Edge 4', color: 'Orange' },
+    11: { name: 'Edge 5', color: 'Orange' },
+    12: { name: 'Edge 6', color: 'Orange' },
+    13: { name: 'Edge 7', color: 'Orange' },
+    14: { name: 'Edge 8', color: 'Orange' },
+    15: { name: 'Edge 9', color: 'Orange' },
+    16: { name: 'Edge 10', color: 'Orange' },
+    17: { name: 'Edge 11', color: 'Orange' },
+    18: { name: 'Corner 0', color: 'Purple' },
+    19: { name: 'Corner 1', color: 'Purple' },
+    20: { name: 'Corner 2', color: 'Purple' },
+    21: { name: 'Corner 3', color: 'Purple' },
+    22: { name: 'Corner 4', color: 'Purple' },
+    23: { name: 'Corner 5', color: 'Purple' },
+    24: { name: 'Corner 6', color: 'Purple' },
+    25: { name: 'Corner 7', color: 'Purple' }
   };
   return materialMapping[materialIndex] || { name: 'Unknown', color: 'Unknown' };
 }
@@ -126,6 +127,236 @@ const light = new THREE.HemisphereLight(0xffffff, 0x444444);
 light.position.set(0, 20, 0);
 scene.add(light);
 
+// Create debug panel
+function createDebugPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'debug-panel';
+  panel.style.position = 'fixed';
+  panel.style.left = '10px';
+  panel.style.top = '50px'; // Moved down to clear timer
+  panel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  panel.style.borderRadius = '8px';
+  panel.style.color = 'white';
+  panel.style.fontSize = '14px';
+  panel.style.maxHeight = 'calc(90vh - 50px)';
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+  panel.style.zIndex = '1000';
+  
+  // Create sticky header with Go button
+  const header = document.createElement('div');
+  header.style.padding = '15px';
+  header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.2)';
+  header.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+  header.style.borderRadius = '8px 8px 0 0';
+  
+  const goButton = document.createElement('button');
+  goButton.textContent = 'Go';
+  goButton.style.width = '100%';
+  goButton.style.padding = '8px 16px';
+  goButton.style.fontSize = '16px';
+  goButton.style.fontWeight = 'bold';
+  
+  header.appendChild(goButton);
+  
+  // Create scrollable options container
+  const scrollContainer = document.createElement('div');
+  scrollContainer.style.overflowY = 'auto';
+  scrollContainer.style.padding = '15px';
+  scrollContainer.style.flex = '1';
+  
+  const optionsContainer = document.createElement('div');
+  optionsContainer.style.display = 'flex';
+  optionsContainer.style.flexDirection = 'column';
+  optionsContainer.style.gap = '5px';
+  
+  // Create radio options for all 26 materials
+  for (let i = 0; i < 26; i++) {
+    const option = document.createElement('label');
+    option.style.display = 'flex';
+    option.style.alignItems = 'center';
+    option.style.cursor = 'pointer';
+    option.style.padding = '4px';
+    option.style.borderRadius = '4px';
+    option.style.transition = 'background-color 0.2s';
+    
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'debug-material';
+    radio.value = i;
+    radio.style.marginRight = '8px';
+    
+    // Select first option by default
+    if (i === 0) radio.checked = true;
+    
+    const materialInfo = getMaterialInfo(i);
+    const textContainer = document.createElement('div');
+    textContainer.style.flex = '1';
+    
+    const mainText = document.createElement('div');
+    mainText.textContent = `${i} - ${materialInfo.name}`;
+    
+    const subText = document.createElement('div');
+    subText.style.fontSize = '11px';
+    subText.style.color = 'rgba(255, 255, 255, 0.5)';
+    subText.style.marginTop = '2px';
+    
+    // Get mesh name for this material index
+    let meshName = '';
+    if (i === 0) meshName = 'Cube001';
+    else if (i >= 1 && i <= 25) meshName = `Cube001_${i}`;
+    
+    subText.textContent = `Material: ${i}, Mesh: ${meshName}`;
+    
+    textContainer.appendChild(mainText);
+    textContainer.appendChild(subText);
+    
+    option.appendChild(radio);
+    option.appendChild(textContainer);
+    
+    // Hover effect
+    option.addEventListener('mouseenter', () => {
+      option.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    });
+    option.addEventListener('mouseleave', () => {
+      option.style.backgroundColor = 'transparent';
+    });
+    
+    optionsContainer.appendChild(option);
+  }
+  
+  scrollContainer.appendChild(optionsContainer);
+  panel.appendChild(header);
+  panel.appendChild(scrollContainer);
+  document.body.appendChild(panel);
+  
+  // Add Go button click handler
+  goButton.addEventListener('click', () => {
+    const selectedRadio = document.querySelector('input[name="debug-material"]:checked');
+    if (selectedRadio) {
+      const materialIndex = parseInt(selectedRadio.value);
+      logEvent(`Debug panel: Triggering camera position for material ${materialIndex} (${getMaterialInfo(materialIndex).name})`);
+      setCameraForMaterial(materialIndex, 'debug panel');
+    }
+  });
+}
+
+// Create the debug panel
+createDebugPanel();
+
+// Function to set camera position for a given material index
+function setCameraForMaterial(materialIndex, source = 'direct') {
+  const materialInfo = getMaterialInfo(materialIndex);
+  const oldQuat = camera.quaternion.clone();
+  
+  // Get proper camera position and orientation based on material index
+  const distance = 5;
+  let targetPosition = new THREE.Vector3();
+  let targetUp = new THREE.Vector3(0, 1, 0);
+  
+  // Check if this is a main face (0-5), edge chamfer (6-17), or corner chamfer (18-25)
+  const isMainFace = materialIndex >= 0 && materialIndex <= 5;
+  
+  if (isMainFace) {
+    // For main faces, define target positions and check if already oriented correctly
+    let shouldReorient = false;
+    
+    switch (materialIndex) {
+      case 0: // Red - Right face (+X)
+        targetPosition.set(distance, 0, 0);
+        targetUp.set(0, 1, 0);
+        // Check if camera is already positioned correctly for this face
+        shouldReorient = Math.abs(camera.position.x - distance) > 0.1 || 
+                        Math.abs(camera.position.y) > 0.1 || 
+                        Math.abs(camera.position.z) > 0.1;
+        break;
+      case 1: // Green - Left face (-X)
+        targetPosition.set(-distance, 0, 0);
+        targetUp.set(0, 1, 0);
+        shouldReorient = Math.abs(camera.position.x + distance) > 0.1 || 
+                        Math.abs(camera.position.y) > 0.1 || 
+                        Math.abs(camera.position.z) > 0.1;
+        break;
+      case 2: // Blue - Back face (-Z)
+        targetPosition.set(0, 0, -distance);
+        targetUp.set(0, 1, 0);
+        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                        Math.abs(camera.position.y) > 0.1 || 
+                        Math.abs(camera.position.z + distance) > 0.1;
+        break;
+      case 3: // Yellow - Front face (+Z)
+        targetPosition.set(0, 0, distance);
+        targetUp.set(0, 1, 0);
+        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                        Math.abs(camera.position.y) > 0.1 || 
+                        Math.abs(camera.position.z - distance) > 0.1;
+        break;
+      case 4: // Magenta - Top face (+Y)
+        targetPosition.set(0, distance, 0);
+        targetUp.set(0, 0, -1);
+        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                        Math.abs(camera.position.y - distance) > 0.1 || 
+                        Math.abs(camera.position.z) > 0.1;
+        break;
+      case 5: // Cyan - Bottom face (-Y)
+        targetPosition.set(0, -distance, 0);
+        targetUp.set(0, 0, 1);
+        shouldReorient = Math.abs(camera.position.x) > 0.1 || 
+                        Math.abs(camera.position.y + distance) > 0.1 || 
+                        Math.abs(camera.position.z) > 0.1;
+        break;
+    }
+    
+    // Only apply changes if camera needs to be reoriented
+    if (!shouldReorient) {
+      logEvent(`Face ${materialIndex} (${materialInfo.name}) already correctly oriented - no change needed`);
+      return; // Skip camera changes
+    }
+  } else {
+    // For edges and corners, check if we have stored intersect data
+    if (setCameraForMaterial.lastIntersect) {
+      const intersect = setCameraForMaterial.lastIntersect;
+      const clickedNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
+      targetPosition.copy(clickedNormal.multiplyScalar(distance));
+      
+      // For non-main faces, use smart up vector calculation
+      const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+      const projectedUp = currentUp.clone();
+      projectedUp.sub(clickedNormal.clone().multiplyScalar(currentUp.dot(clickedNormal)));
+      
+      if (projectedUp.length() > 0.1) {
+        targetUp.copy(projectedUp.normalize());
+      } else {
+        targetUp.set(0, 1, 0);
+      }
+      
+      // Clear the stored intersect
+      setCameraForMaterial.lastIntersect = null;
+    } else {
+      // Fallback for debug panel - use predefined positions
+      // This is where we'll implement proper edge/corner positions
+      const angle = (materialIndex - 6) * (Math.PI / 6); // Placeholder calculation
+      targetPosition.set(
+        distance * Math.cos(angle),
+        distance * 0.5,
+        distance * Math.sin(angle)
+      );
+    }
+  }
+  
+  // Apply the calculated position and orientation
+  camera.position.copy(targetPosition);
+  camera.up.copy(targetUp);
+  
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  camera.updateMatrixWorld();
+  controls.update();
+  // updateFaceInfo() - removed
+  
+  const newQuat = camera.quaternion.clone();
+  logEvent(`Orientation changed | From: ${quaternionToString(oldQuat)} | To: ${quaternionToString(newQuat)} | Source: ${source}`);
+}
+
 const directionalLight = new THREE.DirectionalLight(0xffffff);
 directionalLight.position.set(0, 20, 10);
 scene.add(directionalLight);
@@ -134,22 +365,13 @@ scene.add(directionalLight);
 const timerDiv = document.createElement('div');
 timerDiv.style.position = 'absolute';
 timerDiv.style.top = '10px';
-timerDiv.style.left = '10px';
+timerDiv.style.right = '10px';
 timerDiv.style.color = '#000';
 timerDiv.style.fontFamily = 'monospace';
 timerDiv.style.fontSize = '16px';
 document.body.appendChild(timerDiv);
 
-// FACE INFO DISPLAY
-const faceInfoDiv = document.createElement('div');
-faceInfoDiv.style.position = 'absolute';
-faceInfoDiv.style.top = '40px';
-faceInfoDiv.style.left = '10px';
-faceInfoDiv.style.color = '#000';
-faceInfoDiv.style.fontFamily = 'monospace';
-faceInfoDiv.style.fontSize = '16px';
-faceInfoDiv.style.fontWeight = 'bold';
-document.body.appendChild(faceInfoDiv);
+// FACE INFO DISPLAY - removed
 
 function updateClock() {
   const now = new Date();
@@ -162,38 +384,7 @@ function updateClock() {
 }
 updateClock();
 
-function updateFaceInfo() {
-  if (!model) return;
-  
-  // Get camera's up direction in world space
-  const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-  
-  // Define face normals for the 6 main faces (using corrected material indices)
-  const faces = [
-    { index: 0, normal: new THREE.Vector3(1, 0, 0), name: 'Red' },
-    { index: 1, normal: new THREE.Vector3(-1, 0, 0), name: 'Green' },
-    { index: 2, normal: new THREE.Vector3(0, 0, 1), name: 'Blue' },
-    { index: 3, normal: new THREE.Vector3(0, 0, -1), name: 'Yellow' },
-    { index: 4, normal: new THREE.Vector3(0, 1, 0), name: 'Magenta' },
-    { index: 5, normal: new THREE.Vector3(0, -1, 0), name: 'Cyan' }
-  ];
-  
-  // Find which face normal is most aligned with camera up
-  let bestFace = null;
-  let bestDot = -1;
-  
-  for (const face of faces) {
-    const dot = cameraUp.dot(face.normal);
-    if (dot > bestDot) {
-      bestDot = dot;
-      bestFace = face;
-    }
-  }
-  
-  if (bestFace) {
-    faceInfoDiv.textContent = `Up Face: ${bestFace.index} - ${bestFace.name}`;
-  }
-}
+// updateFaceInfo function removed
 
 // Initialize tracking variables
 lastZoomDistance = camera.position.distanceTo(controls.target);
@@ -297,100 +488,15 @@ function onMouseClick() {
     const materialInfo = getMaterialInfo(materialIndex);
     
     logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex} (${materialInfo.name}), Mesh: ${meshName}`);
-
-    const oldQuat = camera.quaternion.clone();
     
-    // Get proper camera position and orientation based on material index
-    const distance = 5;
-    let targetPosition = new THREE.Vector3();
-    let targetUp = new THREE.Vector3(0, 1, 0);
-    
-    // Check if this is a main face (0-5), edge chamfer (6-17), or corner chamfer (18-25)
-    const isMainFace = materialIndex >= 0 && materialIndex <= 5;
-    
-    if (isMainFace) {
-      // For main faces, define target positions and check if already oriented correctly
-      let shouldReorient = false;
-      
-      switch (materialIndex) {
-        case 0: // Red - Right face (+X)
-          targetPosition.set(distance, 0, 0);
-          targetUp.set(0, 1, 0);
-          // Check if camera is already positioned correctly for this face
-          shouldReorient = Math.abs(camera.position.x - distance) > 0.1 || 
-                          Math.abs(camera.position.y) > 0.1 || 
-                          Math.abs(camera.position.z) > 0.1;
-          break;
-        case 1: // Green - Left face (-X)
-          targetPosition.set(-distance, 0, 0);
-          targetUp.set(0, 1, 0);
-          shouldReorient = Math.abs(camera.position.x + distance) > 0.1 || 
-                          Math.abs(camera.position.y) > 0.1 || 
-                          Math.abs(camera.position.z) > 0.1;
-          break;
-        case 2: // Blue - Back face (-Z)
-          targetPosition.set(0, 0, -distance);
-          targetUp.set(0, 1, 0);
-          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                          Math.abs(camera.position.y) > 0.1 || 
-                          Math.abs(camera.position.z + distance) > 0.1;
-          break;
-        case 3: // Yellow - Front face (+Z)
-          targetPosition.set(0, 0, distance);
-          targetUp.set(0, 1, 0);
-          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                          Math.abs(camera.position.y) > 0.1 || 
-                          Math.abs(camera.position.z - distance) > 0.1;
-          break;
-        case 4: // Magenta - Top face (+Y)
-          targetPosition.set(0, distance, 0);
-          targetUp.set(0, 0, -1);
-          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                          Math.abs(camera.position.y - distance) > 0.1 || 
-                          Math.abs(camera.position.z) > 0.1;
-          break;
-        case 5: // Cyan - Bottom face (-Y)
-          targetPosition.set(0, -distance, 0);
-          targetUp.set(0, 0, 1);
-          shouldReorient = Math.abs(camera.position.x) > 0.1 || 
-                          Math.abs(camera.position.y + distance) > 0.1 || 
-                          Math.abs(camera.position.z) > 0.1;
-          break;
-      }
-      
-      // Only apply changes if camera needs to be reoriented
-      if (!shouldReorient) {
-        logEvent(`Face ${materialIndex} (${materialInfo.name}) already correctly oriented - no change needed`);
-        return; // Skip camera changes
-      }
-    } else {
-      // For edges and corners, use the face normal from the intersected geometry
-      const clickedNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
-      targetPosition.copy(clickedNormal.multiplyScalar(distance));
-      
-      // For non-main faces, use smart up vector calculation
-      const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-      const projectedUp = currentUp.clone();
-      projectedUp.sub(clickedNormal.clone().multiplyScalar(currentUp.dot(clickedNormal)));
-      
-      if (projectedUp.length() > 0.1) {
-        targetUp.copy(projectedUp.normalize());
-      } else {
-        targetUp.set(0, 1, 0);
-      }
+    // For edges and corners that aren't implemented in setCameraForMaterial yet,
+    // we need to pass the intersect data for face normal calculation
+    if (materialIndex >= 6) {
+      // Store the intersect for edge/corner handling
+      setCameraForMaterial.lastIntersect = intersect;
     }
     
-    // Apply the calculated position and orientation
-    camera.position.copy(targetPosition);
-    camera.up.copy(targetUp);
-    
-    camera.lookAt(new THREE.Vector3(0, 0, 0));
-    camera.updateMatrixWorld();
-    controls.update();
-    updateFaceInfo();
-    
-    const newQuat = camera.quaternion.clone();
-    logEvent(`Orientation changed | From: ${quaternionToString(oldQuat)} | To: ${quaternionToString(newQuat)} | Source: view cube`);
+    setCameraForMaterial(materialIndex, 'view cube');
   }
 }
 
@@ -420,7 +526,10 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Initial face info update
-setTimeout(() => updateFaceInfo(), 100);
+// Initial face info update and orientation logging
+setTimeout(() => {
+  // updateFaceInfo() - removed
+  logEvent(`Initial orientation: ${quaternionToString(camera.quaternion)} | Position: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
+}, 100);
 
 animate();
