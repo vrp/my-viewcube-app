@@ -24,6 +24,8 @@ const mouse = new THREE.Vector2();
 
 let model;
 let lastHoveredFaceIndex = null;
+let clickInProgress = false;
+let clickCameraSnapshot = null; // Camera state when click started
 
 // Camera animation state
 let isAnimating = false;
@@ -460,6 +462,16 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
   clickSequenceId++;
   clickStartTime = performance.now();
   clickStartEvent = event;
+  clickInProgress = true;
+  
+  // Snapshot camera state for consistent raycasting
+  clickCameraSnapshot = {
+    position: camera.position.clone(),
+    quaternion: camera.quaternion.clone(),
+    matrix: camera.matrix.clone(),
+    matrixWorld: camera.matrixWorld.clone(),
+    projectionMatrix: camera.projectionMatrix.clone()
+  };
   
   // Get 3D intersection info for debugging
   const info = get3DIntersectionInfo(event);
@@ -491,6 +503,12 @@ renderer.domElement.addEventListener('pointerup', (event) => {
     clickStartEvent = null;
   }
   
+  // Short delay to ensure click event processes with stable camera state
+  setTimeout(() => {
+    clickInProgress = false;
+    clickCameraSnapshot = null; // Clear snapshot
+  }, 50);
+  
   if (orientationActive) {
     const orientationEnd = camera.quaternion.clone();
     if (!orientationStart.equals(orientationEnd)) {
@@ -508,8 +526,10 @@ function onWindowResize() {
 }
 
 function onMouseMove(event) {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+  // Use same coordinate calculation as click events for consistency
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 }
 
 function onMouseClick(event) {
@@ -518,7 +538,17 @@ function onMouseClick(event) {
     return;
   }
 
-  raycaster.setFromCamera(mouse, camera);
+  // Calculate mouse coordinates directly from the click event to avoid timing issues
+  const rect = renderer.domElement.getBoundingClientRect();
+  const clickMouse = new THREE.Vector2();
+  clickMouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  clickMouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  // Use camera snapshot from pointerdown for consistent raycasting
+  const cameraToUse = clickCameraSnapshot ? createTempCamera(clickCameraSnapshot) : camera;
+  const cameraSource = clickCameraSnapshot ? 'snapshot' : 'current';
+  
+  raycaster.setFromCamera(clickMouse, cameraToUse);
   const intersects = raycaster.intersectObject(model, true);
 
   if (intersects.length > 0) {
@@ -528,12 +558,28 @@ function onMouseClick(event) {
     const materialIndex = getMaterialIndexFromIntersection(intersect);
     const materialInfo = getMaterialInfo(materialIndex);
     
-    logEvent(`CLICK | Seq: ${clickSequenceId} | Face: ${faceIndex} | Material: ${materialIndex} (${materialInfo.name}) | Mesh: ${meshName} | 3D: (${intersect.point.x.toFixed(2)}, ${intersect.point.y.toFixed(2)}, ${intersect.point.z.toFixed(2)}) | Normal: (${intersect.face.normal.x.toFixed(2)}, ${intersect.face.normal.y.toFixed(2)}, ${intersect.face.normal.z.toFixed(2)}) | Distance: ${intersect.distance.toFixed(2)}`);
+    logEvent(`CLICK | Seq: ${clickSequenceId} | Face: ${faceIndex} | Material: ${materialIndex} (${materialInfo.name}) | Mesh: ${meshName} | 3D: (${intersect.point.x.toFixed(2)}, ${intersect.point.y.toFixed(2)}, ${intersect.point.z.toFixed(2)}) | Normal: (${intersect.face.normal.x.toFixed(2)}, ${intersect.face.normal.y.toFixed(2)}, ${intersect.face.normal.z.toFixed(2)}) | Distance: ${intersect.distance.toFixed(2)} | Camera: ${cameraSource}`);
     
     setCameraForMaterial(materialIndex, 'view cube');
   } else {
-    logEvent(`CLICK | Seq: ${clickSequenceId} | No intersection detected | Mouse: (${mouse.x.toFixed(3)}, ${mouse.y.toFixed(3)}) | Ray origin: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
+    logEvent(`CLICK | Seq: ${clickSequenceId} | No intersection detected | Click coords: (${clickMouse.x.toFixed(3)}, ${clickMouse.y.toFixed(3)}) vs Global: (${mouse.x.toFixed(3)}, ${mouse.y.toFixed(3)}) | Ray origin: (${cameraToUse.position.x.toFixed(2)}, ${cameraToUse.position.y.toFixed(2)}, ${cameraToUse.position.z.toFixed(2)}) | Camera: ${cameraSource}`);
   }
+}
+
+// Helper function to create temporary camera from snapshot
+function createTempCamera(snapshot) {
+  const tempCamera = new THREE.PerspectiveCamera(
+    camera.fov,
+    camera.aspect,
+    camera.near,
+    camera.far
+  );
+  tempCamera.position.copy(snapshot.position);
+  tempCamera.quaternion.copy(snapshot.quaternion);
+  tempCamera.matrix.copy(snapshot.matrix);
+  tempCamera.matrixWorld.copy(snapshot.matrixWorld);
+  tempCamera.projectionMatrix.copy(snapshot.projectionMatrix);
+  return tempCamera;
 }
 
 function animate() {
@@ -558,7 +604,10 @@ function animate() {
     }
   }
 
-  controls.update();
+  // Prevent camera updates during click processing to avoid raycasting inconsistencies
+  if (!clickInProgress) {
+    controls.update();
+  }
   renderer.render(scene, camera);
 }
 
