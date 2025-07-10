@@ -68,6 +68,13 @@ function onMouseClick(event) {
 
 **Previous Misdiagnosis**: Attempted camera distance optimization (commit 664b2a5) thinking intersection detection was the issue, when the real problem was coordinate calculation in the click handler itself.
 
+**UPDATE**: Upon implementation, discovered that coordinate calculation has **already been fixed** in current codebase:
+- `onMouseMove`: Uses `getBoundingClientRect()` ✅ 
+- `onMouseClick`: Uses `getBoundingClientRect()` ✅
+- Coordinate comparison logging: Already present ✅
+
+This means the "No intersection detected" errors were caused by the camera distance optimization breaking raycasting, not coordinate calculation. With camera distances reverted to baseline (commit 664b2a5), ViewCube should be fully functional.
+
 ### Recent Commits (One-Problem-Per-Commit Philosophy)
 - **f3c426e** - Fix edge and corner camera positioning with lookup table approach (MAJOR)
 - **0e2447a** - Update CLAUDE.md - Document debug panel and feature positioning issues  
@@ -89,17 +96,17 @@ function onMouseClick(event) {
 4. **Test all 26 ViewCube zones** - Ensure reliable intersection detection after coordinate fix
 
 ### Current Todo List (Priority Order)
-1. **Fix coordinate calculation in onMouseClick function** (HIGH) - Root cause of intersection detection failures
-2. **Fix coordinate calculation in onMouseMove function** (HIGH) - Ensure consistent coordinate calculation across all mouse events
+1. **Test ViewCube functionality** (HIGH) - Verify all 26 zones work correctly after coordinate fix and camera revert
+2. **Re-evaluate edge/corner camera positioning** (MEDIUM) - Some clicks may still produce identical quaternions
 3. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
 4. **Create reusable ViewCube component class** (LOW) - For integration into other projects
 5. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
-6. **Re-evaluate edge/corner camera positioning** (LOW) - May be resolved once coordinate calculation is fixed
 
 ### Completed Tasks ✅
 - ✅ **Fix cycling behavior** - Camera snapshot approach successfully eliminates false cycling
 - ✅ **Revert camera distance optimization** - Restored working baseline distances (commit 664b2a5)
 - ✅ **Root cause analysis** - Identified coordinate calculation bug in onMouseClick function
+- ✅ **Fix coordinate calculation** - Already implemented in current codebase using getBoundingClientRect()
 - ✅ **Fix edge/corner click target alignment** - New chamfered_cube.glb model with wider chamfers
 - ✅ **Fix camera orientation issues** - All main faces work correctly with proper orthographic positioning
 - ✅ **Implement full 26-zone ViewCube functionality** - All 6 faces + 12 edges + 8 corners detected
