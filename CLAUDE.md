@@ -90,39 +90,41 @@ The project has evolved through several approaches:
 
 ### 🚨 **Critical Issue Discovered - Mouse Position Mismatch**
 
-**Status**: MAJOR BUG IDENTIFIED - Coordinate synchronization fix INSUFFICIENT
+**Status**: MAJOR BUG IDENTIFIED - Reference camera approach FAILED
 
-**Problem**: Despite implementing direct event coordinates, coordinate disconnect persists and causes unpredictable material detection.
+**Problem**: Root cause correctly identified as camera-dependent raycasting causing cycling behavior, but attempted fix using reference camera has made the problem worse.
 
 **Evidence from Testing**:
 
-**Exhibit A - Same Position, Different Materials**:
-- **Sequence 1**: NDC: (0.008, -0.205) | Material: 15 (Edge 9) ✅
-- **Sequence 2**: NDC: (0.008, -0.205) | Material: 7 (Edge 1) ❌ **Different material at same position!**
-- **Sequence 3**: NDC: (0.008, -0.205) | Material: 8 (Edge 2) ❌ **Different material at same position!**
+**Original Problem (Exhibits A-D)**:
+- **Exhibit C**: Same NDC: (0.009, 0.286) cycling through materials 11→5→16→4→11... as camera rotates
+- **Exhibit D**: Same NDC: (-0.099, 0.052) cycling through materials 7→1→9→5→6→4→8... as camera rotates
+- **Root Cause**: Camera rotations between clicks cause same screen coordinates to detect different materials
 
-**Exhibit B - Coordinate Mismatch Persists**:
-- **Sequence 1**: Global: (0.096, -0.204) | Event: (0.007, -0.204) | **0.089 difference in X!**
-- **Sequence 2**: Global: (0.087, 0.008) | Event: (-0.001, 0.008) | **0.088 difference in X!**
+**Failed Fix Attempt - Reference Camera**:
+- **Approach**: Store initial camera state and use for all raycasting to eliminate camera movement dependency
+- **Implementation**: Created `referenceCamera` with fixed position (3,3,3) and initial orientation
+- **Result**: **16 out of 28 clicks now fail completely** with "No intersection detected"
+- **Analysis**: Fixed camera perspective misaligned with model geometry, causing most rays to miss entirely
 
-**Root Cause Analysis**:
-1. **Event coordinate calculation still wrong** - The fix using `getBoundingClientRect()` is insufficient
-2. **Material detection inconsistency** - Same NDC coordinates produce different materials suggesting deeper raycast issues
-3. **Global mouse variable lag** - Still shows significant offset from event coordinates
-4. **Timing issues** - Rapid clicks at same position detect different geometry
+**Current Status**:
+- Reference camera approach fundamentally flawed
+- Made problem worse: cycling behavior replaced with complete detection failure
+- Most clicks now produce no intersections instead of at least detecting something
+- Coordinate mismatch secondary issue remains (0.089 offset in global vs event coordinates)
 
 **Impact**: 
-- ViewCube appears to work but produces inconsistent/wrong camera orientations
-- User clicks on one feature but gets oriented to a different feature
-- Creates confusing user experience with unpredictable behavior
+- ViewCube now largely non-functional with majority of clicks failing
+- Users can no longer reliably interact with most areas of the ViewCube
+- Reference camera fixed at initial position incompatible with model geometry
 
-**New Analysis**:
-The coordinate comparison shows the fix is working partially (event coordinates are calculated), but:
-1. **Event coordinates may still be incorrect** - Same position should not produce different materials
-2. **Global mouse variable is still wrong** - Large discrepancy suggests `onMouseMove` is not updating correctly
-3. **Raycasting may have timing issues** - Need to investigate if raycast is using stale camera/model data
+**Lessons Learned**:
+1. **Camera-dependent raycasting** correctly identified as root cause of cycling behavior
+2. **Reference camera approach** wrong solution - creates new problems without solving original
+3. **Need alternative approach** that maintains camera-independence without breaking intersection detection
+4. **Consider hybrid approach** or invisible geometry solutions mentioned in development strategy
 
-**Status**: Requires deeper investigation - current fix is insufficient. Need to identify why same coordinates produce different materials.
+**Status**: Back to drawing board - need fundamental rethink of click detection approach.
 
 ### Debugging Features (Active)
 - **Debug Panel** - Left-side panel with "Go" button and 26 radio options for all features
