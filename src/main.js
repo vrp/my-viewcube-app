@@ -47,6 +47,11 @@ let orientationStart = null;
 let orientationActive = false;
 let orientationCause = null;
 
+// Click debugging state
+let clickStartTime = null;
+let clickStartEvent = null;
+let clickSequenceId = 0;
+
 // LOG function - define early so it's available everywhere
 function logEvent(message) {
   const now = new Date();
@@ -404,21 +409,88 @@ controls.addEventListener('change', () => {
   }
 });
 
-// Orientation tracking
-renderer.domElement.addEventListener('pointerdown', (event) => {
-  // Skip if clicking on ViewCube area  
-  const size = 100;
-  const margin = 10;
-  const inCube = event.clientX > window.innerWidth - size - margin && event.clientY < size + margin;
+// Enhanced click debugging functions
+function get3DIntersectionInfo(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   
-  if (!inCube && !orientationActive) {
+  const tempRaycaster = new THREE.Raycaster();
+  tempRaycaster.setFromCamera({ x, y }, camera);
+  
+  const info = {
+    screenCoords: { x: event.clientX, y: event.clientY },
+    normalizedCoords: { x: x.toFixed(3), y: y.toFixed(3) },
+    intersection: null,
+    materialIndex: null,
+    meshName: null,
+    worldPosition: null,
+    faceNormal: null,
+    distanceFromCamera: null
+  };
+  
+  if (model) {
+    const intersects = tempRaycaster.intersectObject(model, true);
+    if (intersects.length > 0) {
+      const intersect = intersects[0];
+      info.intersection = true;
+      info.materialIndex = getMaterialIndexFromIntersection(intersect);
+      info.meshName = intersect.object.name;
+      info.worldPosition = `(${intersect.point.x.toFixed(2)}, ${intersect.point.y.toFixed(2)}, ${intersect.point.z.toFixed(2)})`;
+      info.faceNormal = `(${intersect.face.normal.x.toFixed(2)}, ${intersect.face.normal.y.toFixed(2)}, ${intersect.face.normal.z.toFixed(2)})`;
+      info.distanceFromCamera = intersect.distance.toFixed(2);
+    } else {
+      info.intersection = false;
+    }
+  } else {
+    info.intersection = 'no_model';
+  }
+  
+  return info;
+}
+
+function logClickEvent(eventType, event, info) {
+  const materialInfo = info.materialIndex !== null ? getMaterialInfo(info.materialIndex) : { name: 'None' };
+  
+  logEvent(`${eventType} | Seq: ${clickSequenceId} | Screen: (${info.screenCoords.x}, ${info.screenCoords.y}) | NDC: (${info.normalizedCoords.x}, ${info.normalizedCoords.y}) | 3D: ${info.worldPosition || 'None'} | Material: ${info.materialIndex} (${materialInfo.name}) | Mesh: ${info.meshName || 'None'} | Distance: ${info.distanceFromCamera || 'N/A'}`);
+}
+
+// Enhanced orientation and click tracking
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  clickSequenceId++;
+  clickStartTime = performance.now();
+  clickStartEvent = event;
+  
+  // Get 3D intersection info for debugging
+  const info = get3DIntersectionInfo(event);
+  logClickEvent('POINTER_DOWN', event, info);
+  
+  // Skip if clicking on debug panel area  
+  const debugPanelBounds = document.getElementById('debug-panel')?.getBoundingClientRect();
+  const inDebugPanel = debugPanelBounds && 
+    event.clientX >= debugPanelBounds.left && 
+    event.clientX <= debugPanelBounds.right &&
+    event.clientY >= debugPanelBounds.top && 
+    event.clientY <= debugPanelBounds.bottom;
+  
+  if (!inDebugPanel && !orientationActive) {
     orientationStart = camera.quaternion.clone();
     orientationActive = true;
     orientationCause = 'mouse drag';
   }
 });
 
-renderer.domElement.addEventListener('pointerup', () => {
+renderer.domElement.addEventListener('pointerup', (event) => {
+  if (clickStartTime !== null) {
+    const clickDuration = (performance.now() - clickStartTime).toFixed(1);
+    const info = get3DIntersectionInfo(event);
+    
+    logEvent(`POINTER_UP | Seq: ${clickSequenceId} | Duration: ${clickDuration}ms | Screen: (${info.screenCoords.x}, ${info.screenCoords.y}) | NDC: (${info.normalizedCoords.x}, ${info.normalizedCoords.y}) | 3D: ${info.worldPosition || 'None'} | Material: ${info.materialIndex} (${info.materialIndex !== null ? getMaterialInfo(info.materialIndex).name : 'None'}) | Mesh: ${info.meshName || 'None'}`);
+    
+    clickStartTime = null;
+    clickStartEvent = null;
+  }
+  
   if (orientationActive) {
     const orientationEnd = camera.quaternion.clone();
     if (!orientationStart.equals(orientationEnd)) {
@@ -440,11 +512,13 @@ function onMouseMove(event) {
   mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 }
 
-function onMouseClick() {
-  if (!model) return;
+function onMouseClick(event) {
+  if (!model) {
+    logEvent(`CLICK | No model loaded - click ignored`);
+    return;
+  }
 
   raycaster.setFromCamera(mouse, camera);
-
   const intersects = raycaster.intersectObject(model, true);
 
   if (intersects.length > 0) {
@@ -454,9 +528,11 @@ function onMouseClick() {
     const materialIndex = getMaterialIndexFromIntersection(intersect);
     const materialInfo = getMaterialInfo(materialIndex);
     
-    logEvent(`Clicked face index: ${faceIndex}, Material index: ${materialIndex} (${materialInfo.name}), Mesh: ${meshName}`);
+    logEvent(`CLICK | Seq: ${clickSequenceId} | Face: ${faceIndex} | Material: ${materialIndex} (${materialInfo.name}) | Mesh: ${meshName} | 3D: (${intersect.point.x.toFixed(2)}, ${intersect.point.y.toFixed(2)}, ${intersect.point.z.toFixed(2)}) | Normal: (${intersect.face.normal.x.toFixed(2)}, ${intersect.face.normal.y.toFixed(2)}, ${intersect.face.normal.z.toFixed(2)}) | Distance: ${intersect.distance.toFixed(2)}`);
     
     setCameraForMaterial(materialIndex, 'view cube');
+  } else {
+    logEvent(`CLICK | Seq: ${clickSequenceId} | No intersection detected | Mouse: (${mouse.x.toFixed(3)}, ${mouse.y.toFixed(3)}) | Ray origin: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
   }
 }
 

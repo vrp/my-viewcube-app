@@ -39,10 +39,11 @@ The project has evolved through several approaches:
 **Evidence**: `Orientation changed | From: (0.37, -0.10, 0.25, 0.89) | To: (0.37, -0.10, 0.25, 0.89)` - no actual change
 
 ### Recent Commits (One-Problem-Per-Commit Philosophy)
+- **f3c426e** - Fix edge and corner camera positioning with lookup table approach (MAJOR)
+- **0e2447a** - Update CLAUDE.md - Document debug panel and feature positioning issues  
 - **9cb594b** - Add debug panel for systematic ViewCube testing
 - **6ef4008** - Switch to new chamfered_cube.glb model with improved click targeting (MAJOR)
 - **17d2a5a** - Fix ViewCube face detection and camera positioning system (MAJOR)
-- **Previous** - Fixed console logging and comprehensive event logging
 
 ### Development Philosophy (Updated)
 **One Problem Per Commit**: Starting with next commit, we will tackle exactly one specific problem, fix it completely, commit it, then move to the next. This maintains cleaner git history and easier debugging.
@@ -93,13 +94,18 @@ The project has evolved through several approaches:
   - Triggers camera positioning via `setCameraForMaterial()` function
   - Logs source as "debug panel" for tracking
 - **Synchronized timestamps** - Timer in top-right corner matches console log timestamps
+- **Enhanced Click Debugging** - Comprehensive mouse interaction tracking
+  - **Pointer Down**: `POINTER_DOWN | Seq: X | Screen: (x,y) | NDC: (x,y) | 3D: (x,y,z) | Material: X (Name) | Mesh: Name | Distance: X`
+  - **Pointer Up**: `POINTER_UP | Seq: X | Duration: Xms | Screen: (x,y) | NDC: (x,y) | 3D: (x,y,z) | Material: X (Name) | Mesh: Name`
+  - **Click Events**: `CLICK | Seq: X | Face: X | Material: X (Name) | Mesh: Name | 3D: (x,y,z) | Normal: (x,y,z) | Distance: X`
+  - **Failed Clicks**: `CLICK | Seq: X | No intersection detected | Mouse: (x,y) | Ray origin: (x,y,z)`
+  - **Sequence ID**: Each click sequence gets unique ID for correlation
 - **Comprehensive event logging**:
   - Zoom changes: `Zoom changed | From: X | To: Y`
   - Pan changes: `Pan changed | From: (x,y,z) | To: (x,y,z)`
   - Orientation changes: `Orientation changed | From: (qx,qy,qz,qw) | To: (qx,qy,qz,qw) | Source: view cube/mouse drag/debug panel`
   - Hover events: `Hovered material index: X (MaterialName), Mesh: MeshName`
-  - Click events: `Clicked face index: X, Material index: Y (MaterialName), Mesh: MeshName`
-  - Redundant clicks: `Face Y (MaterialName) already correctly oriented - no change needed`
+  - Redundant clicks: `Feature Y (MaterialName) already correctly oriented - no change needed`
   - Debug panel actions: `Debug panel: Triggering camera position for material X (MaterialName)`
 
 ## Detailed Implementation History
