@@ -38,6 +38,8 @@ The project has evolved through several approaches:
 
 **Evidence**: `Orientation changed | From: (0.37, -0.10, 0.25, 0.89) | To: (0.37, -0.10, 0.25, 0.89)` - no actual change
 
+**Latest Status**: Attempted optimization by increasing camera distances broke intersection detection with "No intersection detected" errors. Reverted to working baseline distances (edges: 3.5, corners: 2.9) to restore functionality. Quaternion similarity issue remains unresolved.
+
 ### Recent Commits (One-Problem-Per-Commit Philosophy)
 - **f3c426e** - Fix edge and corner camera positioning with lookup table approach (MAJOR)
 - **0e2447a** - Update CLAUDE.md - Document debug panel and feature positioning issues  
@@ -51,7 +53,7 @@ The project has evolved through several approaches:
 **Git Commit Messages**: Do not include references to Claude Code, Claude, or Anthropic in commit messages. Keep them focused on the technical changes made.
 
 ### Current Todo List (Priority Order)
-1. **Fix edge/corner camera positioning** (MEDIUM) - Some clicks produce identical quaternions or minimal camera movement
+1. **Fix edge/corner camera positioning** (MEDIUM) - Some clicks produce identical quaternions or minimal camera movement (need alternative approach to distance optimization)
 2. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
 3. **Create reusable ViewCube component class** (LOW) - For integration into other projects
 4. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
