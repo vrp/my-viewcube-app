@@ -88,6 +88,35 @@ The project has evolved through several approaches:
 3. **Remove dynamic calculations** - Replace face normal approach with lookup table
 4. **Unify positioning** - Ensure ViewCube clicks and debug panel use same positions
 
+### 🚨 **Critical Issue Discovered - Mouse Position Mismatch**
+
+**Status**: MAJOR BUG IDENTIFIED via enhanced debugging system
+
+**Problem**: Coordinate disconnect between pointer events and click events causes most clicks to fail intersection detection.
+
+**Evidence from Testing** (Sequence 2 example):
+- **POINTER_DOWN**: NDC: (-0.041, -0.086) | 3D: (0.46, 0.40, 1.00) | Material: 3 (Yellow) ✅ **Accurate**
+- **POINTER_UP**: NDC: (-0.041, -0.086) | 3D: (0.46, 0.40, 1.00) | Material: 3 (Yellow) ✅ **Accurate**  
+- **CLICK**: Mouse: (0.161, -0.104) | **No intersection detected** ❌ **Different coordinates!**
+
+**Root Cause**: 
+- Pointer events use real-time coordinates directly from event objects
+- Click events use global `mouse` variable updated by `onMouseMove`
+- Timing/synchronization issues between mouse movement and click detection
+- Global `mouse` variable may be stale or out of sync during rapid interactions
+
+**Impact**: 
+- Most clicks fail despite cursor being visually over features
+- Creates illusion of broken face detection when it's actually a coordinate timing issue
+- Affects user experience significantly
+
+**Solution Strategy**:
+1. **Fix coordinate synchronization** - Ensure click events use accurate coordinates
+2. **Direct event coordinates** - Use event coordinates directly instead of global `mouse` variable
+3. **Add coordinate comparison** - Log coordinate differences for validation
+
+**Status**: Ready for implementation - debugging system successfully identified the exact technical issue.
+
 ### Debugging Features (Active)
 - **Debug Panel** - Left-side panel with "Go" button and 26 radio options for all features
   - Shows material index and mesh name for each feature
