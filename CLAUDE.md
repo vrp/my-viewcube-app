@@ -90,32 +90,39 @@ The project has evolved through several approaches:
 
 ### 🚨 **Critical Issue Discovered - Mouse Position Mismatch**
 
-**Status**: MAJOR BUG IDENTIFIED via enhanced debugging system
+**Status**: MAJOR BUG IDENTIFIED - Coordinate synchronization fix INSUFFICIENT
 
-**Problem**: Coordinate disconnect between pointer events and click events causes most clicks to fail intersection detection.
+**Problem**: Despite implementing direct event coordinates, coordinate disconnect persists and causes unpredictable material detection.
 
-**Evidence from Testing** (Sequence 2 example):
-- **POINTER_DOWN**: NDC: (-0.041, -0.086) | 3D: (0.46, 0.40, 1.00) | Material: 3 (Yellow) ✅ **Accurate**
-- **POINTER_UP**: NDC: (-0.041, -0.086) | 3D: (0.46, 0.40, 1.00) | Material: 3 (Yellow) ✅ **Accurate**  
-- **CLICK**: Mouse: (0.161, -0.104) | **No intersection detected** ❌ **Different coordinates!**
+**Evidence from Testing**:
 
-**Root Cause**: 
-- Pointer events use real-time coordinates directly from event objects
-- Click events use global `mouse` variable updated by `onMouseMove`
-- Timing/synchronization issues between mouse movement and click detection
-- Global `mouse` variable may be stale or out of sync during rapid interactions
+**Exhibit A - Same Position, Different Materials**:
+- **Sequence 1**: NDC: (0.008, -0.205) | Material: 15 (Edge 9) ✅
+- **Sequence 2**: NDC: (0.008, -0.205) | Material: 7 (Edge 1) ❌ **Different material at same position!**
+- **Sequence 3**: NDC: (0.008, -0.205) | Material: 8 (Edge 2) ❌ **Different material at same position!**
+
+**Exhibit B - Coordinate Mismatch Persists**:
+- **Sequence 1**: Global: (0.096, -0.204) | Event: (0.007, -0.204) | **0.089 difference in X!**
+- **Sequence 2**: Global: (0.087, 0.008) | Event: (-0.001, 0.008) | **0.088 difference in X!**
+
+**Root Cause Analysis**:
+1. **Event coordinate calculation still wrong** - The fix using `getBoundingClientRect()` is insufficient
+2. **Material detection inconsistency** - Same NDC coordinates produce different materials suggesting deeper raycast issues
+3. **Global mouse variable lag** - Still shows significant offset from event coordinates
+4. **Timing issues** - Rapid clicks at same position detect different geometry
 
 **Impact**: 
-- Most clicks fail despite cursor being visually over features
-- Creates illusion of broken face detection when it's actually a coordinate timing issue
-- Affects user experience significantly
+- ViewCube appears to work but produces inconsistent/wrong camera orientations
+- User clicks on one feature but gets oriented to a different feature
+- Creates confusing user experience with unpredictable behavior
 
-**Solution Strategy**:
-1. **Fix coordinate synchronization** - Ensure click events use accurate coordinates
-2. **Direct event coordinates** - Use event coordinates directly instead of global `mouse` variable
-3. **Add coordinate comparison** - Log coordinate differences for validation
+**New Analysis**:
+The coordinate comparison shows the fix is working partially (event coordinates are calculated), but:
+1. **Event coordinates may still be incorrect** - Same position should not produce different materials
+2. **Global mouse variable is still wrong** - Large discrepancy suggests `onMouseMove` is not updating correctly
+3. **Raycasting may have timing issues** - Need to investigate if raycast is using stale camera/model data
 
-**Status**: Ready for implementation - debugging system successfully identified the exact technical issue.
+**Status**: Requires deeper investigation - current fix is insufficient. Need to identify why same coordinates produce different materials.
 
 ### Debugging Features (Active)
 - **Debug Panel** - Left-side panel with "Go" button and 26 radio options for all features
