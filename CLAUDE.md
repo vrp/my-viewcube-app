@@ -39,6 +39,7 @@ The project has evolved through several approaches:
 **Evidence**: `Orientation changed | From: (0.37, -0.10, 0.25, 0.89) | To: (0.37, -0.10, 0.25, 0.89)` - no actual change
 
 ### Recent Commits (One-Problem-Per-Commit Philosophy)
+- **9cb594b** - Add debug panel for systematic ViewCube testing
 - **6ef4008** - Switch to new chamfered_cube.glb model with improved click targeting (MAJOR)
 - **17d2a5a** - Fix ViewCube face detection and camera positioning system (MAJOR)
 - **Previous** - Fixed console logging and comprehensive event logging
@@ -61,26 +62,45 @@ The project has evolved through several approaches:
 - ✅ **Fix console logging verbosity** - Now only logs on material index changes
 - ✅ **Fix material index detection** - Proper mesh name to material index mapping (0-25)
 - ✅ **Prevent redundant camera changes** - "Already correctly oriented" logic working
+- ✅ **Create debug panel** - Left-side panel with 26 radio buttons for systematic testing
 
-### Next Session Plan: Fix Edge/Corner Camera Positioning
+### Testing Results: Edge/Corner Camera Positioning Issues
 
-**Problem**: Edge and corner clicks sometimes produce identical camera quaternions or minimal movement, resulting in unclear views.
+**Terminology**: "Feature" = face, edge, or corner (general term for any of the 26 clickable zones)
 
-**Planned Solution**:
-1. **Define specific camera positions** - Create lookup table for edges (materials 6-17) and corners (materials 18-25)
-2. **Replace dynamic calculation** - Move from face normal approach to predefined orthographic/isometric positions
-3. **Ensure distinct views** - Each zone should produce a clear, distinct camera orientation
+**Testing revealed**:
+1. **Redundant orientations** - Multiple edges/corners produce identical quaternions
+   - Edge 9 clicks: `From: (0.10, 0.37, 0.23, 0.89) | To: (0.10, 0.37, 0.23, 0.89)` - no change
+   - Edge 8 clicks: Both resulted in `(-0.27, -0.65, -0.27, 0.65)` - no change
+2. **Debug panel uses placeholder math** - Arbitrary positions not matching ViewCube geometry
+3. **Face normals approach insufficient** - Produces unclear or identical views for edges/corners
+4. **Main faces work correctly** - Predefined positions and "already oriented" detection functioning
+
+### Next Implementation: Fix Edge/Corner Camera Positioning
+
+**Solution**:
+1. **Create lookup table** - Define proper camera positions and up vectors for all 26 features
+   - 6 faces: Keep existing orthographic views (working)
+   - 12 edges: Define isometric views showing 2 adjacent faces
+   - 8 corners: Define isometric views showing 3 adjacent faces
+2. **Implement consistent checking** - Add "already correctly oriented" logic for all features
+3. **Remove dynamic calculations** - Replace face normal approach with lookup table
+4. **Unify positioning** - Ensure ViewCube clicks and debug panel use same positions
 
 ### Debugging Features (Active)
-- **Synchronized timestamps** - On-screen timer matches console log timestamps for screenshot correlation
+- **Debug Panel** - Left-side panel with "Go" button and 26 radio options for all features
+  - Shows material index and mesh name for each feature
+  - Triggers camera positioning via `setCameraForMaterial()` function
+  - Logs source as "debug panel" for tracking
+- **Synchronized timestamps** - Timer in top-right corner matches console log timestamps
 - **Comprehensive event logging**:
   - Zoom changes: `Zoom changed | From: X | To: Y`
   - Pan changes: `Pan changed | From: (x,y,z) | To: (x,y,z)`
-  - Orientation changes: `Orientation changed | From: (qx,qy,qz,qw) | To: (qx,qy,qz,qw) | Source: view cube/mouse drag`
+  - Orientation changes: `Orientation changed | From: (qx,qy,qz,qw) | To: (qx,qy,qz,qw) | Source: view cube/mouse drag/debug panel`
   - Hover events: `Hovered material index: X (MaterialName), Mesh: MeshName`
   - Click events: `Clicked face index: X, Material index: Y (MaterialName), Mesh: MeshName`
   - Redundant clicks: `Face Y (MaterialName) already correctly oriented - no change needed`
-- **Face identification display** - Shows which material/color is currently pointing up
+  - Debug panel actions: `Debug panel: Triggering camera position for material X (MaterialName)`
 
 ## Detailed Implementation History
 
