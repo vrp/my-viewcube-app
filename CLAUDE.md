@@ -33,47 +33,50 @@ The project has evolved through several approaches:
 - **Material index mapping maintained** - Proper mesh name to material index mapping (0-25)
 - **Model compatibility layer** - Added `getMaterialIndexFromIntersection()` for future model changes
 
-### 🚨 **Critical Issue Discovered - Root Cause Analysis**
+### 🚨 **Actual Root Cause Discovered - Camera Positioning Distance Issues**
 
-**Status**: MAJOR BUG IDENTIFIED - Coordinate calculation in `onMouseClick` function
+**Status**: MAJOR BUG IDENTIFIED - Camera positions too close for reliable raycasting
 
-**Root Cause Discovery**: Through analysis of commits ba02050 and f6f632e, discovered that the coordinate synchronization fix was never fully implemented. While debugging functions use correct `getBoundingClientRect()` calculation, the actual `onMouseClick` function still uses broken global `mouse` variable.
+**Latest Discovery Through Console Log Analysis** (Sequences 1-57): The coordinate calculation was a red herring. Systematic testing revealed the real issue is camera positioning distances from the CAMERA_POSITIONS lookup table.
+
+**Evidence from Console Testing**:
+
+**✅ Working Functionality**:
+- **Corner positions (2.9 distance)**: Perfect cycling through all 8 corners (sequences 48-57)
+- **Same NDC (0.005, -0.002)**: Cycles 18→25→22→23→19→21→24→18 with distinct quaternions
+- **Successful face clicks**: Work when camera naturally positioned
+- **Coordinate synchronization**: Click coords vs Global coords match perfectly
+
+**❌ Systematic Failures**:
+- **Debug panel clicks**: 100% failure rate for intersection detection
+- **Face positions (5.0 distance)**: Inconsistent - some work, many fail
+- **Edge positions (3.5 distance)**: Frequent "No intersection detected" errors
+- **Ray origin analysis**: Camera positioned too close to model geometry
 
 **Technical Analysis**:
-```javascript
-// ✅ CORRECT (used in debugging functions):
-const rect = renderer.domElement.getBoundingClientRect();
-const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+```
+// WORKING (Corner cycling - sequences 48-57):
+Ray origin: (-2.90, 2.90, 2.90) | Material: 23 ✅
+Ray origin: (2.90, -2.90, 2.90) | Material: 25 ✅
 
-// ❌ BROKEN (still used in onMouseClick):
-function onMouseMove(event) {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;     // Wrong!
-  mouse.y = - (event.clientY / window.innerHeight) * 2 + 1; // Wrong!
-}
-function onMouseClick(event) {
-  raycaster.setFromCamera(mouse, camera);  // Uses broken coordinates!
-}
+// FAILING (Debug panel - all sequences):
+Ray origin: (-5.00, 0.00, 0.00) | No intersection detected ❌
+Ray origin: (0.00, 0.00, 5.00) | No intersection detected ❌
+Ray origin: (-3.50, 0.00, 3.50) | No intersection detected ❌
 ```
 
-**Evidence from Historical Testing**:
-- **Same position, different materials**: NDC (0.008, -0.205) detected Material 15, then 7, then 8
-- **Coordinate mismatch**: 0.089 difference between Global and Event coordinates
-- **"No intersection detected" errors**: Camera distance changes were addressing wrong problem
+**Root Cause**: Camera positions from CAMERA_POSITIONS lookup table place camera too close to model geometry, preventing raycaster from properly intersecting the mesh.
 
-**Impact**: 
-- ViewCube clicks fail or detect wrong features due to coordinate calculation bug
-- Camera positioning optimization attempts were solving the wrong problem
-- User experience severely degraded with unpredictable behavior
+**Pattern Analysis**:
+- **Distance 2.9 (corners)**: 100% success rate
+- **Distance 3.5 (edges)**: High failure rate  
+- **Distance 5.0 (faces)**: Inconsistent results
+- **Camera repositioning**: Always fails intersection detection
 
-**Previous Misdiagnosis**: Attempted camera distance optimization (commit 664b2a5) thinking intersection detection was the issue, when the real problem was coordinate calculation in the click handler itself.
-
-**UPDATE**: Upon implementation, discovered that coordinate calculation has **already been fixed** in current codebase:
-- `onMouseMove`: Uses `getBoundingClientRect()` ✅ 
-- `onMouseClick`: Uses `getBoundingClientRect()` ✅
-- Coordinate comparison logging: Already present ✅
-
-This means the "No intersection detected" errors were caused by the camera distance optimization breaking raycasting, not coordinate calculation. With camera distances reverted to baseline (commit 664b2a5), ViewCube should be fully functional.
+**Previous Analysis Correction**: 
+- Coordinate calculation was already properly implemented ✅
+- Camera distance optimization attempt (commit 664b2a5) was addressing symptoms, not root cause
+- Historical commits ba02050/f6f632e were solving different coordinate sync issues that have been resolved
 
 ### Recent Commits (One-Problem-Per-Commit Philosophy)
 - **f3c426e** - Fix edge and corner camera positioning with lookup table approach (MAJOR)
@@ -87,26 +90,36 @@ This means the "No intersection detected" errors were caused by the camera dista
 
 **Git Commit Messages**: Do not include references to Claude Code, Claude, or Anthropic in commit messages. Keep them focused on the technical changes made.
 
-### Next Implementation: Fix Coordinate Calculation Bug
+### Next Implementation: Fix Camera Positioning Distances
 
-**Solution**:
-1. **Fix `onMouseClick` function** - Replace `raycaster.setFromCamera(mouse, camera)` with direct event coordinate calculation using `getBoundingClientRect()`
-2. **Fix `onMouseMove` function** - Update to use `getBoundingClientRect()` for consistent coordinate calculation 
-3. **Add coordinate comparison logging** - Verify POINTER_DOWN, POINTER_UP, and CLICK events show matching coordinates
-4. **Test all 26 ViewCube zones** - Ensure reliable intersection detection after coordinate fix
+**Solution Based on Console Log Evidence**:
+1. **Increase Face Camera Distances** - Change from 5.0 to 7.0-8.0 for reliable intersection detection
+2. **Increase Edge Camera Distances** - Change from 3.5 to 5.0-6.0 to ensure raycaster can intersect geometry  
+3. **Evaluate Corner Distances** - Keep at 2.9 (working perfectly) or slightly increase to 3.2-3.5 for consistency
+4. **Test Debug Panel Functionality** - Verify all 26 debug panel positions work after distance adjustments
+5. **Validate Ray Intersection Geometry** - Ensure camera positions allow proper raycasting
+
+**Technical Requirements**:
+- Maintain successful corner cycling behavior (sequences 48-57 working perfectly)
+- Preserve quaternion distinctness for all 26 zones
+- Ensure debug panel camera positioning functions correctly
+- Keep coordinate calculation implementation (already working correctly)
 
 ### Current Todo List (Priority Order)
-1. **Test ViewCube functionality** (HIGH) - Verify all 26 zones work correctly after coordinate fix and camera revert
-2. **Re-evaluate edge/corner camera positioning** (MEDIUM) - Some clicks may still produce identical quaternions
-3. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
-4. **Create reusable ViewCube component class** (LOW) - For integration into other projects
-5. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
+1. **Optimize camera distances for reliable raycasting** (HIGH) - Increase face/edge distances, validate corner distances
+2. **Test all 26 zones with debug panel** (HIGH) - Verify intersection detection works after distance adjustments
+3. **Validate corner cycling functionality** (MEDIUM) - Ensure successful behavior is preserved
+4. **Re-evaluate quaternion similarity issues** (MEDIUM) - May be resolved with proper camera positioning
+5. **Add corner ViewCube overlay** (MEDIUM) - 100x100px display in top-right
+6. **Create reusable ViewCube component class** (LOW) - For integration into other projects
+7. **Implement smooth camera transitions** (LOW) - Currently disabled, was causing testing issues
 
 ### Completed Tasks ✅
 - ✅ **Fix cycling behavior** - Camera snapshot approach successfully eliminates false cycling
-- ✅ **Revert camera distance optimization** - Restored working baseline distances (commit 664b2a5)
-- ✅ **Root cause analysis** - Identified coordinate calculation bug in onMouseClick function
-- ✅ **Fix coordinate calculation** - Already implemented in current codebase using getBoundingClientRect()
+- ✅ **Comprehensive console log analysis** - Identified camera positioning distance as root cause
+- ✅ **Root cause discovery** - Camera positions too close for reliable raycasting intersection detection
+- ✅ **Coordinate calculation verification** - Confirmed already properly implemented in current codebase
+- ✅ **Corner functionality validation** - Perfect cycling behavior working at 2.9 distance (sequences 48-57)
 - ✅ **Fix edge/corner click target alignment** - New chamfered_cube.glb model with wider chamfers
 - ✅ **Fix camera orientation issues** - All main faces work correctly with proper orthographic positioning
 - ✅ **Implement full 26-zone ViewCube functionality** - All 6 faces + 12 edges + 8 corners detected
